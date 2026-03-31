@@ -48,6 +48,20 @@
 }
 
 @layer utilities {
+  @keyframes status-breathe {
+    0%, 100% {
+      opacity: 0.32;
+      transform: scaleY(0.78);
+      box-shadow: 0 0 0 rgba(59, 130, 246, 0);
+    }
+
+    50% {
+      opacity: 0.95;
+      transform: scaleY(1);
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.28);
+    }
+  }
+
   .glass-panel {
     @apply backdrop-blur-md border border-border shadow-sm;
     background-color: color-mix(in srgb, var(--surface) 88%, transparent);
@@ -60,6 +74,13 @@
   .glass-button {
     @apply hover:bg-surfaceHover border border-border transition-colors duration-200 shadow-sm;
     background-color: var(--surface);
+  }
+
+  .status-pending {
+    background: color-mix(in srgb, var(--accent) 72%, #3b82f6 28%);
+    border: 1px solid color-mix(in srgb, var(--border) 65%, #3b82f6 35%);
+    animation: status-breathe 1.7s ease-in-out infinite;
+    transform-origin: center;
   }
 
   .dark .glass-button {

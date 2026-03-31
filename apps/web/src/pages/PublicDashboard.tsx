@@ -7,6 +7,10 @@ import { getTranslation, normalizeLanguage, type Language, type Translation } fr
 import { applyTheme, getInitialRange, getInitialTheme, getInitialViewMode, syncUrlState, type ThemeMode, type ViewMode } from "../preferences";
 import { listenForDashboardRefresh } from "../services/dashboardEvents";
 
+type DisplayProbeStatus = ProbeStatusSample & {
+  displayLevel: ProbeStatusSample["level"] | "pending";
+};
+
 function formatCountdown(nextProbeAt: string | null, nowMs: number, copy: Translation): string {
   if (!nextProbeAt) {
     return copy.schedulerIdle;
@@ -36,7 +40,7 @@ function formatDateTime(value: string | null, language: Language, options: Intl.
   return new Date(value).toLocaleString(language, options);
 }
 
-function getStatusColor(level: ProbeStatusSample["level"]): string {
+function getStatusColor(level: DisplayProbeStatus["displayLevel"]): string {
   switch (level) {
     case "up":
       return "bg-success";
@@ -44,12 +48,14 @@ function getStatusColor(level: ProbeStatusSample["level"]): string {
       return "bg-warning";
     case "down":
       return "bg-error";
+    case "pending":
+      return "status-pending";
     default:
       return "bg-surfaceHover border border-border";
   }
 }
 
-function getStatusOpacity(status: ProbeStatusSample): string {
+function getStatusOpacity(status: DisplayProbeStatus): string {
   if (status.level === "empty") {
     return "opacity-40";
   }
@@ -69,7 +75,11 @@ function getStatusOpacity(status: ProbeStatusSample): string {
   return "opacity-80";
 }
 
-function getStatusLabel(status: ProbeStatusSample, copy: Translation): string {
+function getStatusLabel(status: DisplayProbeStatus, copy: Translation): string {
+  if (status.displayLevel === "pending") {
+    return copy.pendingProbe;
+  }
+
   switch (status.level) {
     case "up":
       return copy.success;
@@ -82,7 +92,12 @@ function getStatusLabel(status: ProbeStatusSample, copy: Translation): string {
   }
 }
 
-function getStatusTooltip(status: ProbeStatusSample, copy: Translation, language: Language): string {
+function getStatusTooltip(status: DisplayProbeStatus, copy: Translation, language: Language): string {
+  if (status.displayLevel === "pending") {
+    const timeLabel = `${formatDateTime(status.startedAt, language, { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }, copy)} -> ${formatDateTime(status.endedAt, language, { hour: "2-digit", minute: "2-digit" }, copy)}`;
+    return `${timeLabel} / ${copy.pendingProbe}`;
+  }
+
   if (status.level === "empty") {
     return copy.noDataWindow;
   }
@@ -91,6 +106,31 @@ function getStatusTooltip(status: ProbeStatusSample, copy: Translation, language
   const scoreLabel = status.score === null ? "—" : `${Math.round(status.score)}`;
 
   return `${timeLabel} · ${getStatusLabel(status, copy)} · ${status.successCount}/${status.probeCount} · score ${scoreLabel}`;
+}
+
+function decorateRecentStatuses(statuses: ProbeStatusSample[], isProbeCycleRunning: boolean): DisplayProbeStatus[] {
+  if (!isProbeCycleRunning) {
+    return statuses.map((status) => ({ ...status, displayLevel: status.level }));
+  }
+
+  const allEmpty = statuses.every((status) => status.level === "empty");
+  if (allEmpty) {
+    return statuses.map((status) => ({ ...status, displayLevel: "pending" }));
+  }
+
+  let pendingStartIndex = statuses.length;
+  for (let index = statuses.length - 1; index >= 0; index -= 1) {
+    if (statuses[index]?.level === "empty") {
+      pendingStartIndex = index;
+      continue;
+    }
+    break;
+  }
+
+  return statuses.map((status, index) => ({
+    ...status,
+    displayLevel: index >= pendingStartIndex && status.level === "empty" ? "pending" : status.level,
+  }));
 }
 
 function getRangeMeta(range: DashboardRange) {
@@ -118,14 +158,27 @@ function Indicator({ tone }: { tone: ProbeStatusSample["level"] }) {
   );
 }
 
-function StatusBars({ statuses, range, copy, language }: { statuses: ProbeStatusSample[]; range: DashboardRange; copy: Translation; language: Language }) {
+function StatusBars({
+  statuses,
+  range,
+  copy,
+  language,
+  isProbeCycleRunning,
+}: {
+  statuses: ProbeStatusSample[];
+  range: DashboardRange;
+  copy: Translation;
+  language: Language;
+  isProbeCycleRunning: boolean;
+}) {
   const { barHeight, gapClass } = getRangeMeta(range);
   const isSparse = range === "90m" && statuses.length < 30;
+  const decoratedStatuses = decorateRecentStatuses(statuses, isProbeCycleRunning);
 
   return (
     <div className={`flex items-center ${isSparse ? "justify-end gap-[3px]" : gapClass} ${barHeight}`} role="img" aria-label={copy.recentStatus}>
-      {statuses.map((status) => (
-        <span key={status.id} className={`${isSparse ? "w-[6px]" : "flex-1"} rounded-sm ${barHeight} ${getStatusColor(status.level)} ${getStatusOpacity(status)}`} title={getStatusTooltip(status, copy, language)} />
+      {decoratedStatuses.map((status) => (
+        <span key={status.id} className={`${isSparse ? "w-[6px]" : "flex-1"} rounded-sm ${barHeight} ${getStatusColor(status.displayLevel)} ${getStatusOpacity(status)}`} title={getStatusTooltip(status, copy, language)} />
       ))}
     </div>
   );
@@ -146,7 +199,7 @@ function getModelLabel(model: ModelSummary): string {
   return model.displayName?.trim() || model.model;
 }
 
-function ModelCard({ model, range, copy, language }: { model: ModelSummary; range: DashboardRange; copy: Translation; language: Language }) {
+function ModelCard({ model, range, copy, language, isProbeCycleRunning }: { model: ModelSummary; range: DashboardRange; copy: Translation; language: Language; isProbeCycleRunning: boolean }) {
   const isHealthy = model.latestStatus === "up";
   const isDegraded = model.latestStatus === "degraded";
   const populatedBars = model.recentStatuses.filter((status) => status.level !== "empty").length;
@@ -176,7 +229,7 @@ function ModelCard({ model, range, copy, language }: { model: ModelSummary; rang
           <span>{copy.recentStatus}</span>
           <span>{populatedBars}/{model.recentStatuses.length}</span>
         </div>
-        <StatusBars statuses={model.recentStatuses} range={range} copy={copy} language={language} />
+        <StatusBars statuses={model.recentStatuses} range={range} copy={copy} language={language} isProbeCycleRunning={isProbeCycleRunning} />
       </div>
 
       <div className="grid grid-cols-2 gap-y-4 gap-x-2 text-sm mb-6">
@@ -210,7 +263,7 @@ function ModelCard({ model, range, copy, language }: { model: ModelSummary; rang
   );
 }
 
-function ModelRow({ model, range, copy, language }: { model: ModelSummary; range: DashboardRange; copy: Translation; language: Language }) {
+function ModelRow({ model, range, copy, language, isProbeCycleRunning }: { model: ModelSummary; range: DashboardRange; copy: Translation; language: Language; isProbeCycleRunning: boolean }) {
   const isHealthy = model.latestStatus === "up";
   const isDegraded = model.latestStatus === "degraded";
   const displayLabel = getModelLabel(model);
@@ -233,7 +286,7 @@ function ModelRow({ model, range, copy, language }: { model: ModelSummary; range
           <div className={`inline-flex items-center px-2 py-1 rounded bg-surface border border-border text-xs font-mono ${isHealthy ? "text-success" : isDegraded ? "text-warning" : model.latestStatus === "down" ? "text-error" : "text-textMuted"}`}>
             {model.availabilityPercentage.toFixed(1)}% ({model.successes}/{model.probes})
           </div>
-          <StatusBars statuses={model.recentStatuses} range={range} copy={copy} language={language} />
+          <StatusBars statuses={model.recentStatuses} range={range} copy={copy} language={language} isProbeCycleRunning={isProbeCycleRunning} />
         </div>
       </td>
       <td className="px-6 py-4 text-textPrimary">{model.avgConnectivityLatencyMs ? `${Math.round(model.avgConnectivityLatencyMs)}ms` : "—"}</td>
@@ -272,6 +325,7 @@ export function PublicDashboard() {
   const copy = useMemo(() => getTranslation(language), [language]);
   const modelAvailability = useMemo(() => countModelsByLevel(data?.models ?? []), [data?.models]);
   const scheduleExpired = data?.nextProbeAt ? Date.parse(data.nextProbeAt) <= nowMs : false;
+  const isProbeCycleRunning = Boolean(data?.nextProbeAt) && scheduleExpired;
 
   const fetchData = useCallback(async () => {
     try {
@@ -515,7 +569,7 @@ export function PublicDashboard() {
                         {viewMode === "grid" ? (
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {upstream.models.map((model) => (
-                              <ModelCard key={model.model} model={model} range={range} copy={copy} language={language} />
+                              <ModelCard key={model.model} model={model} range={range} copy={copy} language={language} isProbeCycleRunning={isProbeCycleRunning} />
                             ))}
                           </div>
                         ) : (
@@ -533,7 +587,7 @@ export function PublicDashboard() {
                               </thead>
                               <tbody className="divide-y divide-border">
                                 {upstream.models.map((model) => (
-                                  <ModelRow key={model.model} model={model} range={range} copy={copy} language={language} />
+                                  <ModelRow key={model.model} model={model} range={range} copy={copy} language={language} isProbeCycleRunning={isProbeCycleRunning} />
                                 ))}
                               </tbody>
                             </table>

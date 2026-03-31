@@ -125,9 +125,9 @@ describe("App", () => {
   it("renders the improved dashboard header and summary", async () => {
     render(<App />);
 
+    expect(await screen.findByText("Total Models")).toBeInTheDocument();
     expect(screen.getAllByText("Model Status").length).toBeGreaterThan(0);
     expect(screen.getByText("Model API Monitoring Panel")).toBeInTheDocument();
-    expect(await screen.findByText("Total Models")).toBeInTheDocument();
     expect(screen.getAllByText("2").length).toBeGreaterThan(0);
     expect(screen.getByText(/Next detection in/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Recent Status/i).length).toBeGreaterThan(0);
@@ -201,7 +201,7 @@ describe("App", () => {
 
     render(<App />);
 
-    expect(await screen.findByText("Model Status")).toBeInTheDocument();
+    expect(await screen.findByText("Monitored Models")).toBeInTheDocument();
     expect(screen.queryByText("Overview")).not.toBeInTheDocument();
     expect(screen.queryByText("Total Models")).not.toBeInTheDocument();
   });

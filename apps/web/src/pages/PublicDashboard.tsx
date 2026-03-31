@@ -576,6 +576,30 @@ export function PublicDashboard() {
   };
   const toggleTheme = () => setTheme((prev) => (prev === "dark" ? "light" : "dark"));
 
+  if (error) {
+    return (
+      <div className="min-h-screen px-4 py-6 font-sans md:px-6 md:py-8 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <div className="glass-panel flex flex-col items-center justify-center rounded-[28px] border p-6 py-20 text-center" style={{ borderColor: "color-mix(in srgb, var(--error) 50%, transparent)" }}>
+            <XCircle className="mb-4 text-error" size={48} />
+            <h2 className="mb-2 text-xl font-mono text-textPrimary">{copy.connectionError}</h2>
+            <p className="max-w-md text-textSecondary">{error}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading && !data) {
+    return (
+      <div className="min-h-screen px-4 py-6 font-sans md:px-6 md:py-8 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <LoadingScreen title={copy.title} subtitle={copy.establishingConnection} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen px-4 py-6 font-sans md:px-6 md:py-8 lg:px-8">
       <div className="mx-auto max-w-7xl space-y-6">
@@ -651,15 +675,7 @@ export function PublicDashboard() {
           </div>
         </header>
 
-        {error ? (
-          <div className="glass-panel flex flex-col items-center justify-center rounded-[28px] border p-6 py-20 text-center" style={{ borderColor: "color-mix(in srgb, var(--error) 50%, transparent)" }}>
-            <XCircle className="mb-4 text-error" size={48} />
-            <h2 className="mb-2 text-xl font-mono text-textPrimary">{copy.connectionError}</h2>
-            <p className="max-w-md text-textSecondary">{error}</p>
-          </div>
-        ) : loading && !data ? (
-          <LoadingScreen title={copy.title} subtitle={copy.establishingConnection} />
-        ) : data ? (
+        {data ? (
           <div className="space-y-6 animate-in fade-in duration-500">
             {data.showSummaryCards ? (
               <section className="glass-panel rounded-[28px] border border-border p-5 shadow-lg shadow-black/5">

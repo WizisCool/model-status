@@ -391,4 +391,76 @@ describe("probe helpers", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(db.insertProbe).toHaveBeenCalledTimes(1);
   });
+
+  it("retries red down-scored probes when failed retries are enabled", async () => {
+    const db: DbClient = {
+      upsertModel: vi.fn(),
+      upsertUpstream: vi.fn(),
+      listUpstreams: vi.fn(() => []),
+      deactivateMissingUpstreams: vi.fn(),
+      listModels: vi.fn(() => [
+        { upstreamId: "main", id: "gpt-down-retry", created: null, ownedBy: null, displayName: null, icon: null, isVisible: true, sortOrder: 0, syncedAt: new Date().toISOString(), isActive: true },
+      ]),
+      updateModelMetadata: vi.fn(),
+      deactivateMissingModels: vi.fn(),
+      getSetting: vi.fn(() => null),
+      setSetting: vi.fn(),
+      listSettings: vi.fn(() => ({})),
+      getAdminUserByUsername: vi.fn(() => null),
+      getAdminUserById: vi.fn(() => null),
+      createAdminUser: vi.fn(),
+      updateAdminLogin: vi.fn(),
+      createAdminSession: vi.fn(),
+      getAdminSessionByTokenHash: vi.fn(() => null),
+      touchAdminSession: vi.fn(),
+      deleteAdminSession: vi.fn(),
+      deleteExpiredAdminSessions: vi.fn(),
+      insertProbe: vi.fn(() => 1),
+      listProbesSince: vi.fn(() => []),
+      listRecentProbes: vi.fn(() => []),
+      close: vi.fn(),
+    };
+
+    const slowResponse = new Response(
+      new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('data: {"choices":[{"delta":{"content":"ok"}}]}\n\n' + "data: [DONE]\n\n"));
+          controller.close();
+        },
+      }),
+      { status: 200 },
+    );
+    const fastResponse = new Response(
+      new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('data: {"choices":[{"delta":{"content":"ok"}}]}\n\n' + "data: [DONE]\n\n"));
+          controller.close();
+        },
+      }),
+      { status: 200 },
+    );
+
+    const nowValues = [0, 2500, 2600, 5000, 6000, 6020, 6050, 6120];
+    const perfSpy = vi.spyOn(performance, "now").mockImplementation(() => nowValues.shift() ?? 120);
+
+    const fetchMock = vi
+      .fn(async () => slowResponse)
+      .mockImplementationOnce(async () => slowResponse)
+      .mockImplementationOnce(async () => fastResponse);
+    vi.stubGlobal("fetch", fetchMock);
+
+    const [result] = await probeAllModels({ ...baseConfig, failedRetryAttempts: 1 }, db);
+
+    perfSpy.mockRestore();
+
+    expect(result).toBeDefined();
+    if (!result) {
+      throw new Error("Expected a probe result for red retry success test");
+    }
+
+    expect(result.success).toBe(true);
+    expect(result.totalLatencyMs).toBe(120);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(db.insertProbe).toHaveBeenCalledTimes(1);
+  });
 });

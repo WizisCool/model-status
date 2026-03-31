@@ -248,6 +248,7 @@ async function runProbeWithRetries(
 
     const isHealthy = result.success && currentScore >= upThreshold;
     const isDegraded = result.success && currentScore >= degradedThreshold && currentScore < upThreshold;
+    const isDown = result.success && currentScore < degradedThreshold;
     if (isHealthy) {
       break;
     }
@@ -257,7 +258,7 @@ async function runProbeWithRetries(
       continue;
     }
 
-    if (!result.success && failedRetriesLeft > 0) {
+    if ((!result.success || isDown) && failedRetriesLeft > 0) {
       failedRetriesLeft -= 1;
       continue;
     }

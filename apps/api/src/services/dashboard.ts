@@ -53,8 +53,8 @@ function scoreProbe(probe: ProbeRecord): number {
   return Math.max(0, Math.round((1 - blendedPenalty) * 100));
 }
 
-function isAvailableProbe(probe: ProbeRecord, config: DashboardScoreConfig): boolean {
-  return scoreProbe(probe) >= config.modelStatusDegradedScoreThreshold;
+function isSuccessfulProbe(probe: ProbeRecord, config: DashboardScoreConfig): boolean {
+  return scoreProbe(probe) >= config.modelStatusUpScoreThreshold;
 }
 
 function classifyBucket(score: number | null, config: DashboardScoreConfig): "up" | "degraded" | "down" | "empty" {
@@ -102,7 +102,7 @@ function buildRecentStatuses(range: DashboardRange, probes: ProbeRecord[], toDat
       score,
       level: classifyBucket(score, config),
       probeCount: bucketProbes.length,
-      successCount: bucketProbes.filter((probe) => isAvailableProbe(probe, config)).length,
+      successCount: bucketProbes.filter((probe) => isSuccessfulProbe(probe, config)).length,
       avgConnectivityLatencyMs: average(connectivity),
       avgTotalLatencyMs: average(total),
     };
@@ -110,7 +110,7 @@ function buildRecentStatuses(range: DashboardRange, probes: ProbeRecord[], toDat
 }
 
 function summarizeModel(modelRecord: ModelRecord, upstreamName: string, upstreamGroup: string, probes: ProbeRecord[], range: DashboardRange, toDate: Date, config: DashboardMetaConfig) {
-  const successes = probes.filter((probe) => isAvailableProbe(probe, config)).length;
+  const successes = probes.filter((probe) => isSuccessfulProbe(probe, config)).length;
   const failures = probes.length - successes;
   const connectivity = probes
     .map((probe) => probe.connectivityLatencyMs)

@@ -301,18 +301,22 @@ function ModelCard({
   const showModelId = displayLabel !== model.model;
 
   return (
-    <div className="relative overflow-hidden rounded-[24px] border border-border bg-surface/72 p-5 shadow-sm shadow-black/5 transition-colors hover:border-textSecondary">
+    <div className="relative overflow-hidden rounded-[24px] border border-border bg-surface/72 p-6 shadow-sm shadow-black/5 transition-colors hover:border-textSecondary">
       <div className={`absolute inset-y-0 left-0 w-1 ${isHealthy ? "bg-success" : isDegraded ? "bg-warning" : model.latestStatus === "down" ? "bg-error" : "bg-border"}`} />
 
       <div className="min-w-0 pr-4">
-        <h3 className="flex items-center gap-2 truncate font-mono text-[1rem] font-semibold leading-tight text-textPrimary" title={displayLabel}>
-          <ModelIcon icon={model.icon} modelId={model.model} ownedBy={model.ownedBy} size={18} className="text-textPrimary" />
-          <span className="truncate">{displayLabel}</span>
-        </h3>
-        {showModelId ? <div className="mt-1 truncate font-mono text-xs text-textMuted">{model.model}</div> : null}
+        <div className="flex items-center gap-3">
+          <ModelIcon icon={model.icon} modelId={model.model} ownedBy={model.ownedBy} size={32} className="text-textPrimary flex-shrink-0" />
+          <div className="min-w-0">
+            <h3 className="truncate font-mono text-[1rem] font-semibold leading-tight text-textPrimary" title={displayLabel}>
+              {displayLabel}
+            </h3>
+            {showModelId ? <div className="mt-2 truncate font-mono text-xs text-textMuted">{`${copy.modelId}: ${model.model}`}</div> : null}
+          </div>
+        </div>
       </div>
 
-      <div className="mt-5 space-y-2">
+      <div className="mt-6 space-y-3">
         <div className="flex items-center justify-between text-[11px] font-mono uppercase tracking-[0.22em] text-textMuted">
           <span>{copy.recentStatus}</span>
           <span>{populatedBars}/{model.recentStatuses.length}</span>
@@ -320,7 +324,7 @@ function ModelCard({
         <StatusBars statuses={model.recentStatuses} range={range} copy={copy} language={language} isProbeCycleRunning={isProbeCycleRunning} />
       </div>
 
-      <div className="mt-5 grid grid-cols-2 gap-x-3 gap-y-4 text-sm">
+      <div className="mt-6 grid grid-cols-2 gap-x-5 gap-y-5 text-sm">
         <div>
           <div className="mb-1 text-[11px] font-mono uppercase tracking-[0.18em] text-textMuted">{copy.successRate}</div>
           <div className="font-mono text-textPrimary">{`${model.availabilityPercentage.toFixed(1)}%`}</div>
@@ -339,7 +343,7 @@ function ModelCard({
         </div>
       </div>
 
-      <div className="mt-6 flex items-center justify-between gap-3 border-t border-border pt-4 text-xs font-mono text-textMuted">
+      <div className="mt-7 flex items-center justify-between gap-3 border-t border-border pt-5 text-xs font-mono text-textMuted">
         <div className="flex min-w-0 items-center gap-2">
           <Clock size={12} />
           <span className="truncate">{`${copy.lastProbe}: ${formatDateTime(model.lastProbeAt, language, { hour: "2-digit", minute: "2-digit", second: "2-digit" }, copy)}`}</span>
@@ -370,10 +374,10 @@ function ModelRow({
     <tr className="transition-colors hover:bg-surfaceHover">
       <td className="px-6 py-4 font-mono font-medium text-textPrimary">
         <div className="flex items-center gap-3">
-          <ModelIcon icon={model.icon} modelId={model.model} ownedBy={model.ownedBy} size={18} className="text-textPrimary" />
+          <ModelIcon icon={model.icon} modelId={model.model} ownedBy={model.ownedBy} size={24} className="text-textPrimary flex-shrink-0" />
           <div className="min-w-0">
             <span className="block max-w-xs truncate font-mono text-[0.98rem] font-semibold leading-tight" title={displayLabel}>{displayLabel}</span>
-            {showModelId ? <span className="mt-1 block truncate text-xs text-textMuted">{model.model}</span> : null}
+            {showModelId ? <span className="mt-1 block truncate text-xs text-textMuted">{`${copy.modelId}: ${model.model}`}</span> : null}
           </div>
         </div>
       </td>
@@ -416,13 +420,13 @@ function MobileModelListItem({
     <div className="rounded-[22px] border border-border bg-surface/72 p-4 shadow-sm shadow-black/5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <ModelIcon icon={model.icon} modelId={model.model} ownedBy={model.ownedBy} size={18} className="text-textPrimary" />
+          <div className="flex items-center gap-3">
+            <ModelIcon icon={model.icon} modelId={model.model} ownedBy={model.ownedBy} size={24} className="text-textPrimary flex-shrink-0" />
             <h3 className="truncate font-mono text-[0.98rem] font-semibold text-textPrimary" title={displayLabel}>
               {displayLabel}
             </h3>
           </div>
-          {showModelId ? <div className="mt-1 truncate pl-[26px] text-xs text-textMuted">{model.model}</div> : null}
+          {showModelId ? <div className="mt-1 truncate pl-[36px] text-xs text-textMuted">{`${copy.modelId}: ${model.model}`}</div> : null}
         </div>
         <Indicator tone={model.latestStatus} />
       </div>
@@ -813,21 +817,21 @@ export function PublicDashboard() {
                               </div>
                               <div className="hidden overflow-x-auto rounded-[24px] border border-border bg-surface/72 md:block">
                                 <table className="min-w-[760px] w-full text-left text-sm">
-                                <thead className="border-b border-border bg-background/70 text-[11px] font-mono uppercase tracking-[0.18em] text-textSecondary">
-                                  <tr>
-                                    <th className="px-6 py-4">{copy.model}</th>
-                                    <th className="px-6 py-4">{copy.status}</th>
-                                    <th className="px-6 py-4">{copy.connectivity}</th>
-                                    <th className="px-6 py-4">{copy.avgTotalLatency}</th>
-                                    <th className="px-6 py-4">{copy.ttft}</th>
-                                    <th className="px-6 py-4">{copy.lastProbe}</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-border">
-                                  {upstream.models.map((model) => (
-                                    <ModelRow key={model.model} model={model} range={range} copy={copy} language={language} isProbeCycleRunning={isProbeCycleRunning} />
-                                  ))}
-                                </tbody>
+                                  <thead className="border-b border-border bg-background/70 text-[11px] font-mono uppercase tracking-[0.18em] text-textSecondary">
+                                    <tr>
+                                      <th className="px-6 py-4">{copy.model}</th>
+                                      <th className="px-6 py-4">{copy.status}</th>
+                                      <th className="px-6 py-4">{copy.connectivity}</th>
+                                      <th className="px-6 py-4">{copy.avgTotalLatency}</th>
+                                      <th className="px-6 py-4">{copy.ttft}</th>
+                                      <th className="px-6 py-4">{copy.lastProbe}</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-border">
+                                    {upstream.models.map((model) => (
+                                      <ModelRow key={model.model} model={model} range={range} copy={copy} language={language} isProbeCycleRunning={isProbeCycleRunning} />
+                                    ))}
+                                  </tbody>
                                 </table>
                               </div>
                             </>

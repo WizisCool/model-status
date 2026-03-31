@@ -72,7 +72,6 @@ describe("AdminPanel", () => {
       nextProbeAt: null,
       siteTitle: "Model Status",
       siteSubtitle: "Model API Monitoring Panel",
-      githubRepoUrl: "https://github.com/WizisCool/model-status",
       summary: {
         totalModels: 0,
         availableModels: 0,
@@ -171,7 +170,6 @@ describe("AdminPanel", () => {
             nextProbeAt: null,
             siteTitle: "Model Status",
             siteSubtitle: "Model API Monitoring Panel",
-            githubRepoUrl: "https://github.com/WizisCool/model-status",
             summary: {
               totalModels: 0,
               availableModels: 0,

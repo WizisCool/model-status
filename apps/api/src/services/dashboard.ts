@@ -1,4 +1,4 @@
-import { PROJECT_REPOSITORY_URL, type AdminDashboardResponse, type DashboardRange, type DashboardResponse, rangeStartIso } from "@model-status/shared";
+import { type AdminDashboardResponse, type DashboardRange, type DashboardResponse, rangeStartIso } from "@model-status/shared";
 
 import type { DbClient, ModelRecord, ProbeRecord } from "../db";
 
@@ -28,20 +28,18 @@ function average(values: number[]): number | null {
   return Math.round(total / values.length);
 }
 
-function averageFloat(values: number[]): number {
-  if (values.length === 0) {
-    return 0;
-  }
-
-  return Number((values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(2));
-}
-
 function percentage(numerator: number, denominator: number): number {
   if (denominator === 0) {
     return 0;
   }
 
   return Number(((numerator / denominator) * 100).toFixed(2));
+}
+
+function aggregateAvailability(models: Array<{ successes: number; probes: number }>): number {
+  const successes = models.reduce((sum, model) => sum + model.successes, 0);
+  const probes = models.reduce((sum, model) => sum + model.probes, 0);
+  return percentage(successes, probes);
 }
 
 function scoreProbe(probe: ProbeRecord): number {
@@ -53,6 +51,10 @@ function scoreProbe(probe: ProbeRecord): number {
   const totalPenalty = Math.min(probe.totalLatencyMs, 5000) / 5000;
   const blendedPenalty = connectivityPenalty * 0.55 + totalPenalty * 0.45;
   return Math.max(0, Math.round((1 - blendedPenalty) * 100));
+}
+
+function isAvailableProbe(probe: ProbeRecord, config: DashboardScoreConfig): boolean {
+  return scoreProbe(probe) >= config.modelStatusDegradedScoreThreshold;
 }
 
 function classifyBucket(score: number | null, config: DashboardScoreConfig): "up" | "degraded" | "down" | "empty" {
@@ -100,7 +102,7 @@ function buildRecentStatuses(range: DashboardRange, probes: ProbeRecord[], toDat
       score,
       level: classifyBucket(score, config),
       probeCount: bucketProbes.length,
-      successCount: bucketProbes.filter((probe) => probe.success).length,
+      successCount: bucketProbes.filter((probe) => isAvailableProbe(probe, config)).length,
       avgConnectivityLatencyMs: average(connectivity),
       avgTotalLatencyMs: average(total),
     };
@@ -108,7 +110,7 @@ function buildRecentStatuses(range: DashboardRange, probes: ProbeRecord[], toDat
 }
 
 function summarizeModel(modelRecord: ModelRecord, upstreamName: string, upstreamGroup: string, probes: ProbeRecord[], range: DashboardRange, toDate: Date, config: DashboardMetaConfig) {
-  const successes = probes.filter((probe) => probe.success).length;
+  const successes = probes.filter((probe) => isAvailableProbe(probe, config)).length;
   const failures = probes.length - successes;
   const connectivity = probes
     .map((probe) => probe.connectivityLatencyMs)
@@ -213,13 +215,13 @@ export function getDashboardData(
       availableModels,
       degradedModels,
       errorModels,
-      availabilityPercentage: averageFloat(subset.map((model) => model.availabilityPercentage)),
+      availabilityPercentage: aggregateAvailability(subset),
     };
   });
   const availableModels = modelSummaries.filter((model) => model.latestStatus === "up").length;
   const degradedModels = modelSummaries.filter((model) => model.latestStatus === "degraded").length;
   const errorModels = modelSummaries.filter((model) => model.latestStatus === "down").length;
-  const availabilityPercentage = averageFloat(modelSummaries.map((model) => model.availabilityPercentage));
+  const availabilityPercentage = aggregateAvailability(modelSummaries);
 
   return {
     range,
@@ -228,7 +230,6 @@ export function getDashboardData(
     nextProbeAt: null,
     siteTitle: config.siteTitle,
     siteSubtitle: config.siteSubtitle,
-    githubRepoUrl: PROJECT_REPOSITORY_URL,
     summary: {
       totalModels: models.length,
       availableModels,
@@ -247,9 +248,7 @@ export function toPublicDashboardResponse(dashboard: AdminDashboardResponse): Da
   const availableModels = visibleModels.filter((model) => model.latestStatus === "up").length;
   const degradedModels = visibleModels.filter((model) => model.latestStatus === "degraded").length;
   const errorModels = visibleModels.filter((model) => model.latestStatus === "down").length;
-  const availabilityPercentage = visibleModels.length === 0
-    ? 0
-    : Number((visibleModels.reduce((sum, model) => sum + model.availabilityPercentage, 0) / visibleModels.length).toFixed(2));
+  const availabilityPercentage = aggregateAvailability(visibleModels);
 
   return {
     range: dashboard.range,
@@ -258,7 +257,6 @@ export function toPublicDashboardResponse(dashboard: AdminDashboardResponse): Da
     nextProbeAt: dashboard.nextProbeAt,
     siteTitle: dashboard.siteTitle,
     siteSubtitle: dashboard.siteSubtitle,
-    githubRepoUrl: dashboard.githubRepoUrl,
     summary: {
       totalModels: visibleModels.length,
       availableModels,

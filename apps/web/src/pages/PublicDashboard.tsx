@@ -56,6 +56,19 @@ function getStatusColor(level: DisplayProbeStatus["displayLevel"]): string {
   }
 }
 
+function getStatusChipClasses(level: ProbeStatusSample["level"]): string {
+  switch (level) {
+    case "up":
+      return "border-success/25 bg-success/10 text-success";
+    case "degraded":
+      return "border-warning/25 bg-warning/10 text-warning";
+    case "down":
+      return "border-error/25 bg-error/10 text-error";
+    default:
+      return "border-border bg-background/70 text-textMuted";
+  }
+}
+
 function getStatusOpacity(status: DisplayProbeStatus): string {
   if (status.level === "empty") {
     return "opacity-40";
@@ -103,10 +116,10 @@ function getStatusTooltip(status: DisplayProbeStatus, copy: Translation, languag
     return copy.noDataWindow;
   }
 
-  const timeLabel = `${formatDateTime(status.startedAt, language, { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }, copy)} → ${formatDateTime(status.endedAt, language, { hour: "2-digit", minute: "2-digit" }, copy)}`;
-  const scoreLabel = status.score === null ? "—" : `${Math.round(status.score)}`;
+  const timeLabel = `${formatDateTime(status.startedAt, language, { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }, copy)} -> ${formatDateTime(status.endedAt, language, { hour: "2-digit", minute: "2-digit" }, copy)}`;
+  const scoreLabel = status.score === null ? "--" : `${Math.round(status.score)}`;
 
-  return `${timeLabel} · ${getStatusLabel(status, copy)} · ${status.successCount}/${status.probeCount} · score ${scoreLabel}`;
+  return `${timeLabel} | ${getStatusLabel(status, copy)} | ${status.successCount}/${status.probeCount} | score ${scoreLabel}`;
 }
 
 function decorateRecentStatuses(statuses: ProbeStatusSample[], isProbeCycleRunning: boolean): DisplayProbeStatus[] {
@@ -159,6 +172,22 @@ function Indicator({ tone }: { tone: ProbeStatusSample["level"] }) {
   );
 }
 
+function getDashboardTone(summary: DashboardResponse["summary"] | null): ProbeStatusSample["level"] {
+  if (!summary || summary.totalModels === 0) {
+    return "empty";
+  }
+
+  if (summary.errorModels > 0) {
+    return summary.availableModels >= Math.max(1, Math.ceil(summary.totalModels * 0.7)) ? "degraded" : "down";
+  }
+
+  if (summary.degradedModels > 0) {
+    return "degraded";
+  }
+
+  return "up";
+}
+
 function StatusBars({
   statuses,
   range,
@@ -178,19 +207,41 @@ function StatusBars({
   return (
     <div className={`flex w-full items-center ${gapClass} ${barHeight}`} role="img" aria-label={copy.recentStatus}>
       {decoratedStatuses.map((status) => (
-        <span key={status.id} className={`min-w-0 flex-1 rounded-sm ${barHeight} ${getStatusColor(status.displayLevel)} ${getStatusOpacity(status)}`} title={getStatusTooltip(status, copy, language)} />
+        <span
+          key={status.id}
+          className={`min-w-0 flex-1 rounded-sm ${barHeight} ${getStatusColor(status.displayLevel)} ${getStatusOpacity(status)}`}
+          title={getStatusTooltip(status, copy, language)}
+        />
       ))}
     </div>
   );
 }
 
-function StatCard({ label, value, icon, valueColor = "text-textPrimary" }: { label: string; value: string | number; icon: React.ReactNode; valueColor?: string }) {
+function StatCard({
+  label,
+  value,
+  icon,
+  valueColor = "text-textPrimary",
+  detail,
+}: {
+  label: string;
+  value: string | number;
+  icon: React.ReactNode;
+  valueColor?: string;
+  detail?: string;
+}) {
   return (
-    <div className="glass-panel p-6 rounded-lg flex flex-col">
-      <div className="text-textSecondary font-mono text-xs uppercase mb-3 flex items-center gap-2">
-        {icon} {label}
+    <div className="rounded-2xl border border-border bg-surface/70 p-4 shadow-sm shadow-black/5">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="text-[11px] font-mono uppercase tracking-[0.22em] text-textMuted">{label}</div>
+          <div className={`mt-3 text-3xl font-mono ${valueColor}`}>{value}</div>
+          {detail ? <div className="mt-2 text-xs text-textMuted">{detail}</div> : null}
+        </div>
+        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border border-border bg-background/80 text-textSecondary">
+          {icon}
+        </div>
       </div>
-      <div className={`text-3xl font-medium tracking-tight ${valueColor}`}>{value}</div>
     </div>
   );
 }
@@ -199,63 +250,87 @@ function getModelLabel(model: ModelSummary): string {
   return model.displayName?.trim() || model.model;
 }
 
-function ModelCard({ model, range, copy, language, isProbeCycleRunning }: { model: ModelSummary; range: DashboardRange; copy: Translation; language: Language; isProbeCycleRunning: boolean }) {
+function createLatestStatusSample(model: ModelSummary): DisplayProbeStatus {
+  return {
+    id: `${model.upstreamId}-${model.model}-latest`,
+    startedAt: model.lastProbeAt ?? "",
+    endedAt: model.lastProbeAt ?? "",
+    score: null,
+    level: model.latestStatus,
+    probeCount: 0,
+    successCount: 0,
+    avgConnectivityLatencyMs: null,
+    avgTotalLatencyMs: null,
+    displayLevel: model.latestStatus,
+  };
+}
+
+function ModelCard({
+  model,
+  range,
+  copy,
+  language,
+  isProbeCycleRunning,
+}: {
+  model: ModelSummary;
+  range: DashboardRange;
+  copy: Translation;
+  language: Language;
+  isProbeCycleRunning: boolean;
+}) {
   const isHealthy = model.latestStatus === "up";
   const isDegraded = model.latestStatus === "degraded";
   const populatedBars = model.recentStatuses.filter((status) => status.level !== "empty").length;
   const displayLabel = getModelLabel(model);
   const showModelId = displayLabel !== model.model;
+  const latestStatus = createLatestStatusSample(model);
 
   return (
-    <div className="glass-panel p-6 rounded-lg relative overflow-visible group hover:border-textSecondary transition-colors">
-      <div className={`absolute top-0 left-0 w-1 h-full ${isHealthy ? "bg-success" : isDegraded ? "bg-warning" : model.latestStatus === "down" ? "bg-error" : "bg-border"}`} />
+    <div className="relative overflow-hidden rounded-[24px] border border-border bg-surface/72 p-5 shadow-sm shadow-black/5 transition-colors hover:border-textSecondary">
+      <div className={`absolute inset-y-0 left-0 w-1 ${isHealthy ? "bg-success" : isDegraded ? "bg-warning" : model.latestStatus === "down" ? "bg-error" : "bg-border"}`} />
 
-      <div className="flex justify-between items-start mb-6 gap-4">
+      <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 pr-4">
-          <h3 className="font-sans font-semibold text-[1.1rem] truncate text-textPrimary flex items-center gap-2 leading-tight" title={displayLabel}>
+          <h3 className="flex items-center gap-2 truncate font-mono text-[1rem] font-semibold leading-tight text-textPrimary" title={displayLabel}>
             <ModelIcon icon={model.icon} modelId={model.model} ownedBy={model.ownedBy} size={18} className="text-textPrimary" />
             <span className="truncate">{displayLabel}</span>
           </h3>
           {showModelId ? <div className="mt-1 truncate font-mono text-xs text-textMuted">{model.model}</div> : null}
         </div>
-        <div className={`flex-shrink-0 text-xs font-mono px-2 py-1 rounded bg-surface border border-border ${isHealthy ? "text-success" : isDegraded ? "text-warning" : model.latestStatus === "down" ? "text-error" : "text-textMuted"}`}>
-          {model.availabilityPercentage.toFixed(1)}%
+        <div className={`flex-shrink-0 rounded-full border px-3 py-1 text-[11px] font-mono uppercase tracking-[0.18em] ${getStatusChipClasses(model.latestStatus)}`}>
+          {getStatusLabel(latestStatus, copy)}
         </div>
       </div>
 
-      <div className="mb-5 space-y-2">
-        <div className="flex items-center justify-between text-[11px] font-mono uppercase tracking-wide text-textMuted">
+      <div className="mt-5 space-y-2">
+        <div className="flex items-center justify-between text-[11px] font-mono uppercase tracking-[0.22em] text-textMuted">
           <span>{copy.recentStatus}</span>
           <span>{populatedBars}/{model.recentStatuses.length}</span>
         </div>
         <StatusBars statuses={model.recentStatuses} range={range} copy={copy} language={language} isProbeCycleRunning={isProbeCycleRunning} />
       </div>
 
-      <div className="grid grid-cols-2 gap-y-4 gap-x-2 text-sm mb-6">
+      <div className="mt-5 grid grid-cols-2 gap-x-3 gap-y-4 text-sm">
         <div>
-          <div className="text-textMuted text-xs mb-1 font-mono uppercase">{copy.totalLatency}</div>
-          <div className="text-textPrimary font-medium">{model.avgTotalLatencyMs ? `${Math.round(model.avgTotalLatencyMs)}ms` : "—"}</div>
+          <div className="mb-1 text-[11px] font-mono uppercase tracking-[0.18em] text-textMuted">{copy.successRate}</div>
+          <div className="font-mono text-textPrimary">{`${model.availabilityPercentage.toFixed(1)}% (${model.successes}/${model.probes})`}</div>
         </div>
         <div>
-          <div className="text-textMuted text-xs mb-1 font-mono uppercase">{copy.connectivity}</div>
-          <div className="text-textPrimary font-medium">{model.avgConnectivityLatencyMs ? `${Math.round(model.avgConnectivityLatencyMs)}ms` : "—"}</div>
+          <div className="mb-1 text-[11px] font-mono uppercase tracking-[0.18em] text-textMuted">{copy.totalLatency}</div>
+          <div className="font-mono text-textPrimary">{model.avgTotalLatencyMs ? `${Math.round(model.avgTotalLatencyMs)}ms` : "--"}</div>
         </div>
         <div>
-          <div className="text-textMuted text-xs mb-1 font-mono uppercase">{copy.ttft}</div>
-          <div className="text-textPrimary font-medium">{model.avgFirstTokenLatencyMs ? `${Math.round(model.avgFirstTokenLatencyMs)}ms` : "—"}</div>
+          <div className="mb-1 text-[11px] font-mono uppercase tracking-[0.18em] text-textMuted">{copy.connectivity}</div>
+          <div className="font-mono text-textPrimary">{model.avgConnectivityLatencyMs ? `${Math.round(model.avgConnectivityLatencyMs)}ms` : "--"}</div>
         </div>
         <div>
-          <div className="text-textMuted text-xs mb-1 font-mono uppercase">{copy.probes}</div>
-          <div className="text-textSecondary">{model.probes}</div>
-        </div>
-        <div>
-          <div className="text-textMuted text-xs mb-1 font-mono uppercase">{copy.failed}</div>
-          <div className={model.failures > 0 ? "text-error font-medium" : "text-textSecondary"}>{model.failures}</div>
+          <div className="mb-1 text-[11px] font-mono uppercase tracking-[0.18em] text-textMuted">{copy.ttft}</div>
+          <div className="font-mono text-textPrimary">{model.avgFirstTokenLatencyMs ? `${Math.round(model.avgFirstTokenLatencyMs)}ms` : "--"}</div>
         </div>
       </div>
 
-      <div className="mt-auto flex items-center justify-between gap-3 border-t border-border pt-4 text-xs font-mono text-textMuted opacity-80">
-        <div className="flex items-center gap-2 min-w-0">
+      <div className="mt-6 flex items-center justify-between gap-3 border-t border-border pt-4 text-xs font-mono text-textMuted">
+        <div className="flex min-w-0 items-center gap-2">
           <Clock size={12} />
           <span className="truncate">{`${copy.lastProbe}: ${formatDateTime(model.lastProbeAt, language, { hour: "2-digit", minute: "2-digit", second: "2-digit" }, copy)}`}</span>
         </div>
@@ -265,56 +340,53 @@ function ModelCard({ model, range, copy, language, isProbeCycleRunning }: { mode
   );
 }
 
-function ModelRow({ model, range, copy, language, isProbeCycleRunning }: { model: ModelSummary; range: DashboardRange; copy: Translation; language: Language; isProbeCycleRunning: boolean }) {
-  const isHealthy = model.latestStatus === "up";
-  const isDegraded = model.latestStatus === "degraded";
+function ModelRow({
+  model,
+  range,
+  copy,
+  language,
+  isProbeCycleRunning,
+}: {
+  model: ModelSummary;
+  range: DashboardRange;
+  copy: Translation;
+  language: Language;
+  isProbeCycleRunning: boolean;
+}) {
   const displayLabel = getModelLabel(model);
   const showModelId = displayLabel !== model.model;
+  const latestStatus = createLatestStatusSample(model);
 
   return (
-    <tr className="hover:bg-surfaceHover transition-colors group">
+    <tr className="transition-colors hover:bg-surfaceHover">
       <td className="px-6 py-4 font-mono font-medium text-textPrimary">
         <div className="flex items-center gap-3">
           <ModelIcon icon={model.icon} modelId={model.model} ownedBy={model.ownedBy} size={18} className="text-textPrimary" />
           <div className="min-w-0">
-            <span className="font-sans truncate max-w-xs block text-[0.98rem] font-semibold leading-tight" title={displayLabel}>{displayLabel}</span>
+            <span className="block max-w-xs truncate font-mono text-[0.98rem] font-semibold leading-tight" title={displayLabel}>{displayLabel}</span>
             {showModelId ? <span className="mt-1 block truncate text-xs text-textMuted">{model.model}</span> : null}
           </div>
         </div>
       </td>
-      <td className="px-6 py-4 min-w-[220px]">
+      <td className="min-w-[220px] px-6 py-4">
         <div className="space-y-2">
-          <div className={`inline-flex items-center px-2 py-1 rounded bg-surface border border-border text-xs font-mono ${isHealthy ? "text-success" : isDegraded ? "text-warning" : model.latestStatus === "down" ? "text-error" : "text-textMuted"}`}>
-            {model.availabilityPercentage.toFixed(1)}% ({model.successes}/{model.probes})
+          <div className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-mono uppercase tracking-[0.18em] ${getStatusChipClasses(model.latestStatus)}`}>
+            {getStatusLabel(latestStatus, copy)}
           </div>
+          <div className="text-xs font-mono text-textMuted">{`${copy.successRate}: ${model.availabilityPercentage.toFixed(1)}% (${model.successes}/${model.probes})`}</div>
           <StatusBars statuses={model.recentStatuses} range={range} copy={copy} language={language} isProbeCycleRunning={isProbeCycleRunning} />
         </div>
       </td>
-      <td className="px-6 py-4 text-textPrimary">{model.avgConnectivityLatencyMs ? `${Math.round(model.avgConnectivityLatencyMs)}ms` : "—"}</td>
-      <td className="px-6 py-4 text-textPrimary">{model.avgTotalLatencyMs ? `${Math.round(model.avgTotalLatencyMs)}ms` : "—"}</td>
-      <td className="px-6 py-4 text-textPrimary">{model.avgFirstTokenLatencyMs ? `${Math.round(model.avgFirstTokenLatencyMs)}ms` : "—"}</td>
-      <td className="px-6 py-4 text-textSecondary text-xs font-mono">
+      <td className="px-6 py-4 text-textPrimary">{model.avgConnectivityLatencyMs ? `${Math.round(model.avgConnectivityLatencyMs)}ms` : "--"}</td>
+      <td className="px-6 py-4 text-textPrimary">{model.avgTotalLatencyMs ? `${Math.round(model.avgTotalLatencyMs)}ms` : "--"}</td>
+      <td className="px-6 py-4 text-textPrimary">{model.avgFirstTokenLatencyMs ? `${Math.round(model.avgFirstTokenLatencyMs)}ms` : "--"}</td>
+      <td className="px-6 py-4 text-xs font-mono text-textSecondary">
         <div className="flex items-center justify-between gap-3">
           <span>{formatDateTime(model.lastProbeAt, language, { year: "numeric", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }, copy)}</span>
           <Indicator tone={model.latestStatus} />
         </div>
       </td>
     </tr>
-  );
-}
-
-function countModelsByLevel(models: ModelSummary[]) {
-  return models.reduce(
-    (accumulator, model) => {
-      if (model.latestStatus === "up") {
-        accumulator.available += 1;
-      }
-      if (model.latestStatus === "down") {
-        accumulator.error += 1;
-      }
-      return accumulator;
-    },
-    { available: 0, error: 0 },
   );
 }
 
@@ -327,9 +399,9 @@ export function PublicDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const copy = useMemo(() => getTranslation(language), [language]);
-  const modelAvailability = useMemo(() => countModelsByLevel(data?.models ?? []), [data?.models]);
   const scheduleExpired = data?.nextProbeAt ? Date.parse(data.nextProbeAt) <= nowMs : false;
   const isProbeCycleRunning = Boolean(data?.nextProbeAt) && scheduleExpired;
 
@@ -339,13 +411,13 @@ export function PublicDashboard() {
       setError(null);
       const response = await fetch(`/api/dashboard?range=${range}`);
       if (!response.ok) {
-        throw new Error(language === "zh-CN" ? "获取仪表盘数据失败" : "Failed to fetch dashboard data");
+        throw new Error(language === "zh-CN" ? "鑾峰彇浠〃鐩樻暟鎹け璐?" : "Failed to fetch dashboard data");
       }
 
       const json = (await response.json()) as DashboardResponse;
       setData(json);
     } catch (err) {
-      setError(err instanceof Error ? err.message : language === "zh-CN" ? "未知错误" : "Unknown error");
+      setError(err instanceof Error ? err.message : language === "zh-CN" ? "鏈煡閿欒" : "Unknown error");
     } finally {
       setLoading(false);
     }
@@ -422,32 +494,34 @@ export function PublicDashboard() {
     return () => clearInterval(refreshInterval);
   }, [data?.nextProbeAt, fetchData, scheduleExpired]);
 
-  const countdownLabel = formatCountdown(data?.nextProbeAt ?? null, nowMs, copy);
-
   const groupedModels = useMemo(() => {
-    if (!data) return [];
-    
-    const groups: Record<string, Record<string, ModelSummary[]>> = {};
-    for (const m of data.models) {
-      const groupName = m.upstreamGroup || "Default";
-      const upstreamName = m.upstreamName || "Unknown";
-      
-      if (!groups[groupName]) groups[groupName] = {};
-      if (!groups[groupName][upstreamName]) groups[groupName][upstreamName] = [];
-      
-      groups[groupName][upstreamName].push(m);
+    if (!data) {
+      return [];
     }
-    
+
+    const groups: Record<string, Record<string, ModelSummary[]>> = {};
+    for (const model of data.models) {
+      const groupName = model.upstreamGroup || "Default";
+      const upstreamName = model.upstreamName || "Unknown";
+
+      if (!groups[groupName]) {
+        groups[groupName] = {};
+      }
+      if (!groups[groupName][upstreamName]) {
+        groups[groupName][upstreamName] = [];
+      }
+
+      groups[groupName][upstreamName].push(model);
+    }
+
     return Object.entries(groups).map(([groupName, upstreams]) => ({
       groupName,
       upstreams: Object.entries(upstreams).map(([upstreamName, models]) => ({
         upstreamName,
-        models
-      }))
+        models,
+      })),
     }));
   }, [data]);
-
-  const [isAdmin, setIsAdmin] = useState(false);
 
   const checkAdmin = useCallback(async () => {
     try {
@@ -457,7 +531,7 @@ export function PublicDashboard() {
         setIsAdmin(json.authenticated);
       }
     } catch {
-      // Ignore error
+      // Ignore session errors on the public dashboard.
     }
   }, []);
 
@@ -465,159 +539,198 @@ export function PublicDashboard() {
     void checkAdmin();
   }, [checkAdmin]);
 
+  const countdownLabel = formatCountdown(data?.nextProbeAt ?? null, nowMs, copy);
+  const healthyRate = data && data.summary.totalModels > 0
+    ? Number(((data.summary.availableModels / data.summary.totalModels) * 100).toFixed(1))
+    : 0;
+  const rangeSuccessLabel = data ? `${copy.successRate}: ${data.summary.availabilityPercentage.toFixed(1)}%` : null;
+  const dashboardTone = getDashboardTone(data?.summary ?? null);
+
   const toggleLanguage = () => setLanguage((prev) => (prev === "en" ? "zh-CN" : "en"));
   const toggleTheme = () => setTheme((prev) => (prev === "dark" ? "light" : "dark"));
 
   return (
-    <div className="min-h-screen p-6 md:p-10 max-w-7xl mx-auto font-sans flex flex-col">
-      <header className="mb-12">
-        <div className="relative overflow-hidden rounded-[32px] border border-border bg-gradient-to-br from-surface via-surface to-accent/35 p-6 shadow-2xl shadow-black/10 md:p-8">
+    <div className="min-h-screen px-4 py-6 font-sans md:px-6 md:py-8 lg:px-8">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <header className="relative overflow-hidden rounded-[32px] border border-border bg-gradient-to-br from-surface via-surface to-accent/40 p-6 shadow-2xl shadow-black/10 md:p-8">
           <div className="pointer-events-none absolute inset-0 opacity-60">
             <div className="absolute -right-16 top-0 h-40 w-40 rounded-full bg-success/10 blur-3xl" />
             <div className="absolute left-0 top-24 h-48 w-48 rounded-full bg-accent/20 blur-3xl" />
           </div>
 
-          <div className="relative flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-            <div>
-              <h1 className="font-display text-4xl font-medium tracking-tight text-textPrimary flex items-center gap-3 leading-tight">
-                <Activity className="text-success" />
-                {data?.siteTitle || copy.title}
-              </h1>
-              <p className="text-textSecondary mt-2 text-sm">{data?.siteSubtitle || copy.subtitle}</p>
-              <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-border bg-background/70 px-3 py-1 text-xs font-mono text-textSecondary shadow-sm">
-                <Indicator tone={data ? (modelAvailability.error === 0 ? "up" : modelAvailability.available >= Math.max(1, Math.ceil(data.summary.totalModels * 0.7)) ? "degraded" : "down") : "empty"} />
-                {countdownLabel}
+          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="space-y-3">
+              <div className="inline-flex items-center rounded-full border border-border bg-background/70 px-3 py-1 text-xs font-mono uppercase tracking-[0.28em] text-textMuted">
+                {copy.publicDashboard}
+              </div>
+              <div>
+                <h1 className="text-3xl font-mono font-semibold tracking-tight text-textPrimary md:text-4xl">
+                  {data?.siteTitle || copy.title}
+                </h1>
+                <p className="mt-2 max-w-2xl text-sm text-textSecondary">
+                  {data?.siteSubtitle || copy.subtitle}
+                </p>
+              </div>
+              <div className="inline-flex flex-wrap items-center gap-2 rounded-full border border-border bg-background/70 px-3 py-1 text-xs font-mono text-textSecondary shadow-sm">
+                <Indicator tone={dashboardTone} />
+                <span>{countdownLabel}</span>
+                {rangeSuccessLabel ? <span className="text-textMuted">|</span> : null}
+                {rangeSuccessLabel ? <span>{rangeSuccessLabel}</span> : null}
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="flex bg-surface border border-border p-1 rounded-md shadow-sm">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex rounded-2xl border border-border bg-background/70 p-1 shadow-sm">
                 {(["90m", "24h", "7d", "30d"] as DashboardRange[]).map((value) => (
-                  <button key={value} type="button" onClick={() => setRange(value)} className={`px-4 py-1.5 text-sm font-mono rounded-sm transition-colors ${range === value ? "bg-accent text-textPrimary shadow-sm" : "text-textSecondary hover:text-textPrimary hover:bg-surfaceHover"}`}>
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setRange(value)}
+                    className={`rounded-xl px-4 py-1.5 text-sm font-mono transition-colors ${range === value ? "bg-accent text-textPrimary shadow-sm" : "text-textSecondary hover:bg-surfaceHover hover:text-textPrimary"}`}
+                  >
                     {value}
                   </button>
                 ))}
               </div>
 
-              <div className="flex bg-surface border border-border p-1 rounded-md shadow-sm">
-                <button type="button" onClick={() => setViewMode("grid")} className={`p-1.5 rounded-sm transition-colors ${viewMode === "grid" ? "bg-accent text-textPrimary" : "text-textSecondary hover:text-textPrimary hover:bg-surfaceHover"}`}>
+              <div className="flex rounded-2xl border border-border bg-background/70 p-1 shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("grid")}
+                  className={`rounded-xl p-2 transition-colors ${viewMode === "grid" ? "bg-accent text-textPrimary" : "text-textSecondary hover:bg-surfaceHover hover:text-textPrimary"}`}
+                >
                   <LayoutGrid size={16} />
                 </button>
-                <button type="button" onClick={() => setViewMode("list")} className={`p-1.5 rounded-sm transition-colors ${viewMode === "list" ? "bg-accent text-textPrimary" : "text-textSecondary hover:text-textPrimary hover:bg-surfaceHover"}`}>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("list")}
+                  className={`rounded-xl p-2 transition-colors ${viewMode === "list" ? "bg-accent text-textPrimary" : "text-textSecondary hover:bg-surfaceHover hover:text-textPrimary"}`}
+                >
                   <List size={16} />
                 </button>
               </div>
 
               <div className="flex items-center gap-2">
-                {isAdmin && (
-                  <a href="/admin" className="glass-button p-2 rounded-md text-textSecondary hover:text-textPrimary text-sm font-mono flex items-center h-8" title={copy.adminDashboard}>
+                {isAdmin ? (
+                  <a href="/admin" className="glass-button flex h-10 items-center rounded-xl px-4 text-sm font-mono text-textSecondary hover:text-textPrimary" title={copy.adminDashboard}>
                     {copy.admin}
                   </a>
-                )}
-                <button type="button" onClick={toggleLanguage} className="glass-button p-2 rounded-md text-textSecondary hover:text-textPrimary h-8 flex items-center" title={copy.toggleLanguage}>
+                ) : null}
+                <button type="button" onClick={toggleLanguage} className="glass-button rounded-xl p-2 text-textSecondary hover:text-textPrimary" title={copy.toggleLanguage}>
                   <Languages size={16} />
                 </button>
-                <button type="button" onClick={toggleTheme} className="glass-button p-2 rounded-md text-textSecondary hover:text-textPrimary h-8 flex items-center" title={copy.toggleTheme}>
+                <button type="button" onClick={toggleTheme} className="glass-button rounded-xl p-2 text-textSecondary hover:text-textPrimary" title={copy.toggleTheme}>
                   {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
                 </button>
               </div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {error ? (
-        <div className="glass-panel p-6 rounded-lg border flex flex-col items-center justify-center text-center py-20" style={{ borderColor: "color-mix(in srgb, var(--error) 50%, transparent)" }}>
-          <XCircle className="text-error mb-4" size={48} />
-          <h2 className="text-xl font-mono mb-2 text-textPrimary">{copy.connectionError}</h2>
-          <p className="text-textSecondary max-w-md">{error}</p>
-        </div>
-      ) : loading && !data ? (
-        <div className="flex flex-col items-center justify-center py-32 space-y-4">
-          <Activity className="animate-pulse text-textMuted" size={32} />
-          <p className="text-textMuted font-mono text-sm animate-pulse">{copy.establishingConnection}</p>
-        </div>
-      ) : data ? (
-        <div className="space-y-10 animate-in fade-in duration-500">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard label={copy.totalModels} value={data.summary.totalModels} icon={<Server size={18} />} />
-            <StatCard label={copy.successRate} value={`${data.summary.availabilityPercentage.toFixed(1)}%`} icon={<Activity size={18} />} valueColor={data.summary.availabilityPercentage >= 80 ? "text-success" : data.summary.availabilityPercentage >= 50 ? "text-warning" : "text-error"} />
-            <StatCard label={copy.successes} value={data.summary.availableModels} icon={<CheckCircle2 size={18} />} valueColor="text-success" />
-            <StatCard label={copy.failures} value={data.summary.errorModels} icon={<XCircle size={18} />} valueColor={data.summary.errorModels > 0 ? "text-error" : "text-textPrimary"} />
+        {error ? (
+          <div className="glass-panel flex flex-col items-center justify-center rounded-[28px] border p-6 py-20 text-center" style={{ borderColor: "color-mix(in srgb, var(--error) 50%, transparent)" }}>
+            <XCircle className="mb-4 text-error" size={48} />
+            <h2 className="mb-2 text-xl font-mono text-textPrimary">{copy.connectionError}</h2>
+            <p className="max-w-md text-textSecondary">{error}</p>
           </div>
+        ) : loading && !data ? (
+          <div className="flex flex-col items-center justify-center py-32">
+            <Activity className="animate-pulse text-textMuted" size={32} />
+            <p className="mt-4 text-sm font-mono text-textMuted animate-pulse">{copy.establishingConnection}</p>
+          </div>
+        ) : data ? (
+          <div className="space-y-6 animate-in fade-in duration-500">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <StatCard label={copy.totalModels} value={data.summary.totalModels} icon={<Server size={18} />} />
+              <StatCard label={copy.successes} value={data.summary.availableModels} icon={<CheckCircle2 size={18} />} valueColor="text-success" detail={`${healthyRate.toFixed(1)}%`} />
+              <StatCard label={copy.degraded} value={data.summary.degradedModels} icon={<Activity size={18} />} valueColor={data.summary.degradedModels > 0 ? "text-warning" : "text-textPrimary"} />
+              <StatCard label={copy.failures} value={data.summary.errorModels} icon={<XCircle size={18} />} valueColor={data.summary.errorModels > 0 ? "text-error" : "text-textPrimary"} />
+            </div>
 
-          <div>
-            <h2 className="font-display text-[1.65rem] text-textPrimary mb-6 flex items-center gap-2 leading-tight">
-              <span className="w-2 h-2 rounded-full bg-accent inline-block" />
-              {copy.monitoredModels}
-            </h2>
-
-            {data.models.length === 0 ? (
-              <div className="glass-panel p-12 rounded-lg text-center flex flex-col items-center justify-center">
-                <Server className="text-textMuted mb-4" size={40} />
-                <h3 className="font-display text-2xl font-medium text-textPrimary mb-2">{copy.noModelsFound}</h3>
-                <p className="text-textSecondary mb-6">{copy.syncToBegin}</p>
+            <section className="glass-panel rounded-[28px] border border-border p-6 shadow-lg shadow-black/5">
+              <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <h2 className="text-2xl font-mono text-textPrimary">{copy.monitoredModels}</h2>
+                  <p className="mt-1 text-sm text-textSecondary">{rangeSuccessLabel}</p>
+                </div>
               </div>
-            ) : (
-              <div className="space-y-12">
-                {groupedModels.map((group) => (
-                  <div key={group.groupName} className="space-y-8">
-                    <h3 className="font-display text-xl text-textPrimary border-b border-border pb-2">{group.groupName}</h3>
-                    
-                    {group.upstreams.map((upstream) => (
-                      <div key={upstream.upstreamName} className="space-y-4">
-                        <div className="flex items-center gap-2 text-textSecondary mb-4">
-                          <Server size={14} className="text-accent" />
-                          <span className="font-medium text-sm">{upstream.upstreamName}</span>
-                          <span className="text-xs text-textMuted font-mono bg-surface px-2 py-0.5 rounded ml-2">{upstream.models.length} models</span>
-                        </div>
-                        
-                        {viewMode === "grid" ? (
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {upstream.models.map((model) => (
-                              <ModelCard key={model.model} model={model} range={range} copy={copy} language={language} isProbeCycleRunning={isProbeCycleRunning} />
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="glass-panel rounded-lg overflow-hidden">
-                            <table className="w-full text-left text-sm">
-                              <thead className="bg-surface border-b border-border text-textSecondary font-mono text-xs uppercase">
-                                <tr>
-                                  <th className="px-6 py-4">{copy.model}</th>
-                                  <th className="px-6 py-4">{copy.status}</th>
-                                  <th className="px-6 py-4">{copy.connectivity}</th>
-                                  <th className="px-6 py-4">{copy.avgTotalLatency}</th>
-                                  <th className="px-6 py-4">{copy.ttft}</th>
-                                  <th className="px-6 py-4">{copy.lastProbe}</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-border">
-                                {upstream.models.map((model) => (
-                                  <ModelRow key={model.model} model={model} range={range} copy={copy} language={language} isProbeCycleRunning={isProbeCycleRunning} />
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        )}
+
+              {data.models.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <Server className="mb-4 text-textMuted" size={40} />
+                  <h3 className="text-2xl font-mono text-textPrimary">{copy.noModelsFound}</h3>
+                  <p className="mt-2 text-textSecondary">{copy.syncToBegin}</p>
+                </div>
+              ) : (
+                <div className="mt-8 space-y-8">
+                  {groupedModels.map((group) => (
+                    <section key={group.groupName} className="space-y-5">
+                      <div className="border-b border-border pb-3">
+                        <h3 className="text-xl font-mono text-textPrimary">{group.groupName}</h3>
                       </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      ) : null}
 
-      <footer className="mt-auto pt-24 pb-8 flex flex-col items-center justify-center gap-4 text-textMuted text-sm font-mono">
-        <a href={PROJECT_REPOSITORY_URL} target="_blank" rel="noopener noreferrer" className="hover:text-textPrimary transition-colors flex items-center gap-2">
-          <svg aria-label="GitHub" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><title>GitHub</title><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" /></svg>
-          Powered by model status
-        </a>
-        <a href={PROJECT_REPOSITORY_URL} target="_blank" rel="noopener noreferrer" className="hover:text-textPrimary transition-colors">
-          {copy.githubLink}
-        </a>
-      </footer>
+                      {group.upstreams.map((upstream) => (
+                        <div key={upstream.upstreamName} className="space-y-4">
+                          <div className="flex flex-wrap items-center gap-3">
+                            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-background/70 px-3 py-1 text-xs font-mono text-textSecondary">
+                              <Server size={14} className="text-accent" />
+                              <span>{upstream.upstreamName}</span>
+                            </div>
+                            <span className="rounded-full border border-border bg-surface/70 px-2 py-1 text-[10px] font-mono uppercase tracking-[0.18em] text-textMuted">
+                              {upstream.models.length} models
+                            </span>
+                          </div>
+
+                          {viewMode === "grid" ? (
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                              {upstream.models.map((model) => (
+                                <ModelCard key={model.model} model={model} range={range} copy={copy} language={language} isProbeCycleRunning={isProbeCycleRunning} />
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="overflow-hidden rounded-[24px] border border-border bg-surface/72">
+                              <table className="w-full text-left text-sm">
+                                <thead className="border-b border-border bg-background/70 text-[11px] font-mono uppercase tracking-[0.18em] text-textSecondary">
+                                  <tr>
+                                    <th className="px-6 py-4">{copy.model}</th>
+                                    <th className="px-6 py-4">{copy.status}</th>
+                                    <th className="px-6 py-4">{copy.connectivity}</th>
+                                    <th className="px-6 py-4">{copy.avgTotalLatency}</th>
+                                    <th className="px-6 py-4">{copy.ttft}</th>
+                                    <th className="px-6 py-4">{copy.lastProbe}</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-border">
+                                  {upstream.models.map((model) => (
+                                    <ModelRow key={model.model} model={model} range={range} copy={copy} language={language} isProbeCycleRunning={isProbeCycleRunning} />
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </section>
+                  ))}
+                </div>
+              )}
+            </section>
+          </div>
+        ) : null}
+
+        <footer className="flex flex-col items-center justify-center gap-4 pb-4 pt-10 text-sm font-mono text-textMuted">
+          <a href={PROJECT_REPOSITORY_URL} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 transition-colors hover:text-textPrimary">
+            <svg aria-label="GitHub" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+              <title>GitHub</title>
+              <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" />
+            </svg>
+            Powered by model status
+          </a>
+          <a href={PROJECT_REPOSITORY_URL} target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-textPrimary">
+            {copy.githubLink}
+          </a>
+        </footer>
+      </div>
     </div>
   );
 }

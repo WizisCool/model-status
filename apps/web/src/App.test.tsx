@@ -18,7 +18,6 @@ vi.stubGlobal(
         nextProbeAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
         siteTitle,
         siteSubtitle,
-        githubRepoUrl: "",
         summary: { totalModels: 2, availableModels: 1, degradedModels: 1, errorModels: 0, availabilityPercentage: 57.5 },
         models: [
           {

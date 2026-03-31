@@ -1,4 +1,3 @@
-import { PROJECT_REPOSITORY_URL } from "@model-status/shared";
 import { describe, expect, it, vi } from "vitest";
 
 import type { DbClient } from "../db";
@@ -91,7 +90,6 @@ describe("dashboard service", () => {
     const config = {
       siteTitle: "Model Status",
       siteSubtitle: "subtitle",
-      githubRepoUrl: "",
       probeIntervalMs: 120000,
       modelStatusUpScoreThreshold: 60,
       modelStatusDegradedScoreThreshold: 30,
@@ -105,7 +103,6 @@ describe("dashboard service", () => {
     expect(result.summary.degradedModels).toBe(0);
     expect(result.summary.errorModels).toBe(1);
     expect(result.summary.availabilityPercentage).toBe(50);
-    expect(result.githubRepoUrl).toBe(PROJECT_REPOSITORY_URL);
     expect(result.upstreams).toHaveLength(1);
     expect(result.nextProbeAt).toBeNull();
     expect(result.models).toHaveLength(1);
@@ -159,6 +156,257 @@ describe("dashboard service", () => {
     });
     expect(hiddenDashboard.models).toHaveLength(1);
     expect(hiddenDashboard.summary.totalModels).toBe(1);
+
+    vi.useRealTimers();
+  });
+
+  it("uses weighted probe totals for summary availability across all ranges", () => {
+    const now = new Date("2026-01-01T12:00:00.000Z");
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+
+    const db: DbClient = {
+      upsertUpstream: vi.fn(),
+      listUpstreams: vi.fn(() => [
+        { id: "main", name: "Main", group: "default", apiBaseUrl: "https://example.com/v1", modelsUrl: "https://example.com/v1/models", apiKey: "key", isActive: true, updatedAt: now.toISOString() },
+      ]),
+      deactivateMissingUpstreams: vi.fn(),
+      upsertModel: vi.fn(),
+      listModels: vi.fn(() => [
+        { upstreamId: "main", id: "model-a", created: 1, ownedBy: "openai", displayName: "Model A", icon: "openai", isVisible: true, sortOrder: 1, syncedAt: now.toISOString(), isActive: true },
+        { upstreamId: "main", id: "model-b", created: 2, ownedBy: "openai", displayName: "Model B", icon: "openai", isVisible: true, sortOrder: 2, syncedAt: now.toISOString(), isActive: true },
+        { upstreamId: "main", id: "model-hidden", created: 3, ownedBy: "openai", displayName: "Hidden", icon: "openai", isVisible: false, sortOrder: 3, syncedAt: now.toISOString(), isActive: true },
+      ]),
+      updateModelMetadata: vi.fn(),
+      deactivateMissingModels: vi.fn(),
+      getSetting: vi.fn(() => null),
+      setSetting: vi.fn(),
+      listSettings: vi.fn(() => ({})),
+      getAdminUserByUsername: vi.fn(() => null),
+      getAdminUserById: vi.fn(() => null),
+      createAdminUser: vi.fn(),
+      updateAdminLogin: vi.fn(),
+      createAdminSession: vi.fn(),
+      getAdminSessionByTokenHash: vi.fn(() => null),
+      touchAdminSession: vi.fn(),
+      deleteAdminSession: vi.fn(),
+      deleteExpiredAdminSessions: vi.fn(),
+      insertProbe: vi.fn(() => 1),
+      listProbesSince: vi.fn(() => [
+        {
+          id: 1,
+          upstreamId: "main",
+          upstreamName: "Main",
+          model: "model-a",
+          startedAt: "2026-01-01T11:10:00.000Z",
+          completedAt: "2026-01-01T11:10:01.000Z",
+          success: true,
+          statusCode: 200,
+          error: null,
+          connectivityLatencyMs: 100,
+          firstTokenLatencyMs: 200,
+          totalLatencyMs: 900,
+          rawResponseText: "ok",
+        },
+        {
+          id: 2,
+          upstreamId: "main",
+          upstreamName: "Main",
+          model: "model-a",
+          startedAt: "2026-01-01T11:20:00.000Z",
+          completedAt: "2026-01-01T11:20:01.000Z",
+          success: true,
+          statusCode: 200,
+          error: null,
+          connectivityLatencyMs: 110,
+          firstTokenLatencyMs: 210,
+          totalLatencyMs: 910,
+          rawResponseText: "ok",
+        },
+        {
+          id: 3,
+          upstreamId: "main",
+          upstreamName: "Main",
+          model: "model-a",
+          startedAt: "2026-01-01T11:30:00.000Z",
+          completedAt: "2026-01-01T11:30:01.000Z",
+          success: true,
+          statusCode: 200,
+          error: null,
+          connectivityLatencyMs: 120,
+          firstTokenLatencyMs: 220,
+          totalLatencyMs: 920,
+          rawResponseText: "ok",
+        },
+        {
+          id: 4,
+          upstreamId: "main",
+          upstreamName: "Main",
+          model: "model-a",
+          startedAt: "2026-01-01T11:40:00.000Z",
+          completedAt: "2026-01-01T11:40:01.000Z",
+          success: true,
+          statusCode: 200,
+          error: null,
+          connectivityLatencyMs: 130,
+          firstTokenLatencyMs: 230,
+          totalLatencyMs: 930,
+          rawResponseText: "ok",
+        },
+        {
+          id: 5,
+          upstreamId: "main",
+          upstreamName: "Main",
+          model: "model-b",
+          startedAt: "2026-01-01T11:50:00.000Z",
+          completedAt: "2026-01-01T11:50:01.000Z",
+          success: true,
+          statusCode: 200,
+          error: null,
+          connectivityLatencyMs: 140,
+          firstTokenLatencyMs: 240,
+          totalLatencyMs: 940,
+          rawResponseText: "ok",
+        },
+        {
+          id: 6,
+          upstreamId: "main",
+          upstreamName: "Main",
+          model: "model-b",
+          startedAt: "2026-01-01T11:55:00.000Z",
+          completedAt: "2026-01-01T11:55:01.000Z",
+          success: false,
+          statusCode: 500,
+          error: "upstream",
+          connectivityLatencyMs: 150,
+          firstTokenLatencyMs: null,
+          totalLatencyMs: 950,
+          rawResponseText: "error",
+        },
+        {
+          id: 7,
+          upstreamId: "main",
+          upstreamName: "Main",
+          model: "model-hidden",
+          startedAt: "2026-01-01T11:45:00.000Z",
+          completedAt: "2026-01-01T11:45:01.000Z",
+          success: false,
+          statusCode: 500,
+          error: "upstream",
+          connectivityLatencyMs: 160,
+          firstTokenLatencyMs: null,
+          totalLatencyMs: 960,
+          rawResponseText: "error",
+        },
+        {
+          id: 8,
+          upstreamId: "main",
+          upstreamName: "Main",
+          model: "model-hidden",
+          startedAt: "2026-01-01T11:46:00.000Z",
+          completedAt: "2026-01-01T11:46:01.000Z",
+          success: false,
+          statusCode: 500,
+          error: "upstream",
+          connectivityLatencyMs: 170,
+          firstTokenLatencyMs: null,
+          totalLatencyMs: 970,
+          rawResponseText: "error",
+        },
+      ]),
+      listRecentProbes: vi.fn(() => []),
+      close: vi.fn(),
+    };
+
+    const config = {
+      siteTitle: "Model Status",
+      siteSubtitle: "subtitle",
+      probeIntervalMs: 300000,
+      modelStatusUpScoreThreshold: 60,
+      modelStatusDegradedScoreThreshold: 30,
+    };
+
+    const adminDashboard = getDashboardData(db, "90m", config);
+    expect(adminDashboard.summary.availabilityPercentage).toBe(62.5);
+    expect(adminDashboard.upstreams[0]?.availabilityPercentage).toBe(62.5);
+
+    const publicDashboard = toPublicDashboardResponse(adminDashboard);
+    expect(publicDashboard.summary.availabilityPercentage).toBe(83.33);
+
+    vi.useRealTimers();
+  });
+
+  it("treats successful but down-scored probes as failed availability", () => {
+    const now = new Date("2026-01-01T12:00:00.000Z");
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+
+    const db: DbClient = {
+      upsertUpstream: vi.fn(),
+      listUpstreams: vi.fn(() => [
+        { id: "main", name: "Main", group: "default", apiBaseUrl: "https://example.com/v1", modelsUrl: "https://example.com/v1/models", apiKey: "key", isActive: true, updatedAt: now.toISOString() },
+      ]),
+      deactivateMissingUpstreams: vi.fn(),
+      upsertModel: vi.fn(),
+      listModels: vi.fn(() => [
+        { upstreamId: "main", id: "slow-model", created: 1, ownedBy: "openai", displayName: "Slow Model", icon: "openai", isVisible: true, sortOrder: 1, syncedAt: now.toISOString(), isActive: true },
+      ]),
+      updateModelMetadata: vi.fn(),
+      deactivateMissingModels: vi.fn(),
+      getSetting: vi.fn(() => null),
+      setSetting: vi.fn(),
+      listSettings: vi.fn(() => ({})),
+      getAdminUserByUsername: vi.fn(() => null),
+      getAdminUserById: vi.fn(() => null),
+      createAdminUser: vi.fn(),
+      updateAdminLogin: vi.fn(),
+      createAdminSession: vi.fn(),
+      getAdminSessionByTokenHash: vi.fn(() => null),
+      touchAdminSession: vi.fn(),
+      deleteAdminSession: vi.fn(),
+      deleteExpiredAdminSessions: vi.fn(),
+      insertProbe: vi.fn(() => 1),
+      listProbesSince: vi.fn(() => [
+        {
+          id: 1,
+          upstreamId: "main",
+          upstreamName: "Main",
+          model: "slow-model",
+          startedAt: "2026-01-01T11:30:00.000Z",
+          completedAt: "2026-01-01T11:30:05.000Z",
+          success: true,
+          statusCode: 200,
+          error: null,
+          connectivityLatencyMs: 2100,
+          firstTokenLatencyMs: 2600,
+          totalLatencyMs: 5000,
+          rawResponseText: "ok",
+        },
+      ]),
+      listRecentProbes: vi.fn(() => []),
+      close: vi.fn(),
+    };
+
+    const config = {
+      siteTitle: "Model Status",
+      siteSubtitle: "subtitle",
+      probeIntervalMs: 300000,
+      modelStatusUpScoreThreshold: 60,
+      modelStatusDegradedScoreThreshold: 30,
+    };
+
+    const result = getDashboardData(db, "90m", config);
+
+    expect(result.models[0]).toEqual(
+      expect.objectContaining({
+        successes: 0,
+        failures: 1,
+        availabilityPercentage: 0,
+        latestStatus: "down",
+      }),
+    );
+    expect(result.summary.availabilityPercentage).toBe(0);
+    expect(result.models[0]?.recentStatuses.find((status) => status.probeCount === 1)?.successCount).toBe(0);
 
     vi.useRealTimers();
   });

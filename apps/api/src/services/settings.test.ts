@@ -1,9 +1,7 @@
-import { PROJECT_REPOSITORY_URL } from "@model-status/shared";
 import { describe, expect, it } from "vitest";
 
 import type { AppConfig } from "../config";
 import { createDb } from "../db";
-import { getDashboardData } from "./dashboard";
 import { ensureRuntimeSettings, getAdminSettingsResponse, getRuntimeSettings, updateAdminSettings } from "./settings";
 
 const testConfig: AppConfig = {
@@ -36,9 +34,6 @@ describe("settings service", () => {
 
       const runtime = getRuntimeSettings(db, testConfig);
       expect(runtime.failedRetryAttempts).toBe(2);
-
-      const dashboard = getDashboardData(db, "90m", runtime);
-      expect(dashboard.githubRepoUrl).toBe(PROJECT_REPOSITORY_URL);
     } finally {
       db.close();
     }

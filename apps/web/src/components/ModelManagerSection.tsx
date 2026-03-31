@@ -2,13 +2,11 @@ import type { AdminDashboardResponse } from "@model-status/shared";
 import {
   closestCenter,
   DndContext,
-  DragOverlay,
   KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
-  type DragStartEvent,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -26,6 +24,10 @@ import { getAdminCopy } from "../adminCopy";
 import { ModelIcon, MODEL_ICON_OPTIONS } from "./ModelIcon";
 
 type EditableModel = AdminDashboardResponse["models"][number];
+
+function getSortableModelId(model: EditableModel): string {
+  return `${model.upstreamId}::${model.model}`;
+}
 
 function sortModels(models: EditableModel[]): EditableModel[] {
   return [...models].sort((left, right) => {
@@ -96,7 +98,7 @@ function ModelIconModal({
             <h3 className="text-2xl font-mono text-textPrimary">{copy.chooseIcon}</h3>
             <p className="mt-2 text-sm text-textSecondary">{getModelLabel(model, copy)}</p>
           </div>
-          <button type="button" onClick={onClose} className="glass-button rounded-xl p-2 text-textSecondary hover:text-textPrimary" aria-label="Close icon picker">
+          <button type="button" onClick={onClose} className="glass-button rounded-xl p-2 text-textSecondary hover:text-textPrimary" aria-label={copy.closeIconPicker}>
             <X size={18} />
           </button>
         </div>
@@ -149,6 +151,7 @@ function SortableModelRow({
 }) {
   const copy = getAdminCopy(language);
   const displayLabel = getModelLabel(model, copy);
+  const sortableId = getSortableModelId(model);
   const {
     attributes,
     listeners,
@@ -157,7 +160,7 @@ function SortableModelRow({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: model.model });
+  } = useSortable({ id: sortableId });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -177,7 +180,7 @@ function SortableModelRow({
           ref={setActivatorNodeRef}
           type="button"
           className="glass-button mt-0.5 cursor-grab rounded-lg p-1.5 text-textMuted active:cursor-grabbing"
-          aria-label={`Drag ${displayLabel}`}
+          aria-label={`${copy.dragModel} ${displayLabel}`}
           {...attributes}
           {...listeners}
         >
@@ -204,7 +207,7 @@ function SortableModelRow({
               />
               <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono text-textMuted">
                 <span className="rounded-full border border-border px-2 py-1">{copy.modelId}: {model.model}</span>
-                <span className="rounded-full border border-border px-2 py-1">{copy.provider}: {model.ownedBy ?? "-"}</span>
+                <span className="rounded-full border border-border px-2 py-1">{copy.provider}: {model.ownedBy ?? copy.none}</span>
                 <span className="rounded-full border border-border px-2 py-1">#{model.sortOrder}</span>
               </div>
             </div>
@@ -216,7 +219,7 @@ function SortableModelRow({
                 className={`glass-button inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-mono ${
                   model.isVisible ? "text-textPrimary" : "text-textMuted"
                 }`}
-                aria-label={model.isVisible ? "Hide model from public dashboard" : "Show model on public dashboard"}
+                aria-label={model.isVisible ? copy.hideModelFromDashboard : copy.showModelOnDashboard}
               >
                 {model.isVisible ? <Eye size={13} /> : <EyeOff size={13} />}
                 <span>{model.isVisible ? copy.visible : copy.hidden}</span>
@@ -251,7 +254,6 @@ export function ModelManagerSection({
   language: "en" | "zh-CN";
 }) {
   const copy = getAdminCopy(language);
-  const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [iconTarget, setIconTarget] = useState<EditableModel | null>(null);
 
   const sensors = useSensors(
@@ -296,22 +298,15 @@ export function ModelManagerSection({
       }));
   }, [models]);
 
-  const activeDragModel = useMemo(() => models.find((model) => model.model === activeDragId) ?? null, [activeDragId, models]);
-
-  const handleDragStart = (event: DragStartEvent) => {
-    setActiveDragId(String(event.active.id));
-  };
-
   const handleDragEnd = (upstreamId: string, orderedModels: EditableModel[]) => (event: DragEndEvent) => {
     const { active, over } = event;
-    setActiveDragId(null);
 
     if (!over || active.id === over.id) {
       return;
     }
 
-    const oldIndex = orderedModels.findIndex((model) => model.model === active.id);
-    const newIndex = orderedModels.findIndex((model) => model.model === over.id);
+    const oldIndex = orderedModels.findIndex((model) => getSortableModelId(model) === active.id);
+    const newIndex = orderedModels.findIndex((model) => getSortableModelId(model) === over.id);
     if (oldIndex < 0 || newIndex < 0) {
       return;
     }
@@ -362,8 +357,8 @@ export function ModelManagerSection({
                       </div>
                     </div>
 
-                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd(upstream.upstreamId, upstream.models)}>
-                      <SortableContext items={upstream.models.map((model) => model.model)} strategy={verticalListSortingStrategy}>
+                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(upstream.upstreamId, upstream.models)}>
+                      <SortableContext items={upstream.models.map((model) => getSortableModelId(model))} strategy={verticalListSortingStrategy}>
                         <div className="space-y-2">
                           {upstream.models.map((model) => (
                             <SortableModelRow
@@ -377,25 +372,6 @@ export function ModelManagerSection({
                           ))}
                         </div>
                       </SortableContext>
-
-                      <DragOverlay dropAnimation={{ duration: 220, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" }}>
-                        {activeDragModel ? (
-                          <div className="rounded-xl border border-accent bg-surface/95 px-3 py-3 shadow-2xl shadow-accent/15">
-                            <div className="flex items-center gap-3">
-                              <div className="glass-button rounded-lg p-1.5 text-textMuted">
-                                <GripVertical size={15} />
-                              </div>
-                              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background/80">
-                                <ModelIcon icon={activeDragModel.icon} modelId={activeDragModel.model} ownedBy={activeDragModel.ownedBy} size={22} />
-                              </div>
-                              <div className="min-w-0">
-                                <div className="text-sm font-mono text-textPrimary">{getModelLabel(activeDragModel, copy)}</div>
-                                <div className="mt-1 text-[11px] font-mono text-textMuted">{activeDragModel.model}</div>
-                              </div>
-                            </div>
-                          </div>
-                        ) : null}
-                      </DragOverlay>
                     </DndContext>
                   </div>
                 ))}
@@ -416,3 +392,7 @@ export function ModelManagerSection({
     </section>
   );
 }
+
+export const __modelManagerTestUtils = {
+  getSortableModelId,
+};

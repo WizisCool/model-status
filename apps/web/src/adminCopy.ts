@@ -105,6 +105,15 @@ export type AdminCopy = {
   apiBaseUrl: string;
   modelsUrl: string;
   apiKeyReplace: string;
+  closeIconPicker: string;
+  dragModel: string;
+  hideModelFromDashboard: string;
+  showModelOnDashboard: string;
+  durationSummaryHours: string;
+  durationSummaryMinutes: string;
+  durationSummarySeconds: string;
+  failedRetryShort: string;
+  degradedRetryShort: string;
   durationUnitOptions: DurationUnitOption[];
   settingGroups: SettingGroupConfig[];
 };
@@ -192,6 +201,15 @@ const adminCopyByLanguage: Record<Language, AdminCopy> = {
     apiBaseUrl: "API Base URL",
     modelsUrl: "Models URL",
     apiKeyReplace: "Replace API key",
+    closeIconPicker: "Close icon picker",
+    dragModel: "Drag",
+    hideModelFromDashboard: "Hide model from public dashboard",
+    showModelOnDashboard: "Show model on public dashboard",
+    durationSummaryHours: "hr",
+    durationSummaryMinutes: "min",
+    durationSummarySeconds: "sec",
+    failedRetryShort: "fail",
+    degradedRetryShort: "degr",
     durationUnitOptions: [
       { value: "seconds", label: "sec" },
       { value: "minutes", label: "min" },
@@ -330,6 +348,15 @@ const adminCopyByLanguage: Record<Language, AdminCopy> = {
     apiBaseUrl: "API 基础地址",
     modelsUrl: "模型列表地址",
     apiKeyReplace: "替换 API 密钥",
+    closeIconPicker: "关闭图标选择",
+    dragModel: "拖动",
+    hideModelFromDashboard: "从前台隐藏模型",
+    showModelOnDashboard: "在前台显示模型",
+    durationSummaryHours: "时",
+    durationSummaryMinutes: "分",
+    durationSummarySeconds: "秒",
+    failedRetryShort: "失败",
+    degradedRetryShort: "降级",
     durationUnitOptions: [
       { value: "seconds", label: "秒" },
       { value: "minutes", label: "分" },

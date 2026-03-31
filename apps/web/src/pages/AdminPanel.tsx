@@ -46,14 +46,14 @@ function formatDurationValue(valueMs: number, unit: DurationUnit): number {
   return Number((valueMs / factor).toFixed(2));
 }
 
-function formatDurationSummary(valueMs: number): string {
+function formatDurationSummary(valueMs: number, copy: ReturnType<typeof getAdminCopy>): string {
   if (valueMs % DURATION_UNIT_FACTORS.hours === 0) {
-    return `${valueMs / DURATION_UNIT_FACTORS.hours} hr`;
+    return `${valueMs / DURATION_UNIT_FACTORS.hours} ${copy.durationSummaryHours}`;
   }
   if (valueMs % DURATION_UNIT_FACTORS.minutes === 0) {
-    return `${valueMs / DURATION_UNIT_FACTORS.minutes} min`;
+    return `${valueMs / DURATION_UNIT_FACTORS.minutes} ${copy.durationSummaryMinutes}`;
   }
-  return `${valueMs / DURATION_UNIT_FACTORS.seconds} sec`;
+  return `${valueMs / DURATION_UNIT_FACTORS.seconds} ${copy.durationSummarySeconds}`;
 }
 
 function getSettingGroupIcon(groupId: SettingGroupConfig["id"]) {
@@ -405,11 +405,11 @@ export function AdminPanel() {
     return [
       {
         label: settingFieldByKey.get("probeIntervalMs")?.label ?? "Probe Interval",
-        value: formatDurationSummary(settings.settings.probeIntervalMs),
+        value: formatDurationSummary(settings.settings.probeIntervalMs, copy),
       },
       {
         label: settingFieldByKey.get("probeTimeoutMs")?.label ?? "Probe Timeout",
-        value: formatDurationSummary(settings.settings.probeTimeoutMs),
+        value: formatDurationSummary(settings.settings.probeTimeoutMs, copy),
       },
       {
         label: settingFieldByKey.get("probeConcurrency")?.label ?? "Max Probe Concurrency",
@@ -417,10 +417,10 @@ export function AdminPanel() {
       },
       {
         label: settingGroups.find((group) => group.id === "retries")?.title ?? "Retry Policy",
-        value: `fail ${settings.settings.failedRetryAttempts} / deg ${settings.settings.degradedRetryAttempts}`,
+        value: `${copy.failedRetryShort} ${settings.settings.failedRetryAttempts} / ${copy.degradedRetryShort} ${settings.settings.degradedRetryAttempts}`,
       },
     ];
-  }, [settingFieldByKey, settingGroups, settings]);
+  }, [copy, settingFieldByKey, settingGroups, settings]);
 
   if (!session.authenticated) {
     return (

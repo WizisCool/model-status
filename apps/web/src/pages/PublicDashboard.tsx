@@ -4,6 +4,7 @@ import type { DashboardRange, DashboardResponse, ModelSummary, ProbeStatusSample
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ModelIcon } from "../components/ModelIcon";
+import { ProjectIcon } from "../components/ProjectIcon";
 import { getTranslation, normalizeLanguage, type Language, type Translation } from "../i18n";
 import { applyTheme, getInitialRange, getInitialTheme, getInitialViewMode, syncUrlState, type ThemeMode, type ViewMode } from "../preferences";
 import { listenForDashboardRefresh } from "../services/dashboardEvents";
@@ -191,8 +192,9 @@ function SchedulerStatusPill({
 function LoadingScreen({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div className="glass-panel flex min-h-[60vh] flex-col items-center justify-center rounded-[28px] border px-6 py-20 text-center shadow-lg shadow-black/5">
-      <div className="flex h-16 w-16 items-center justify-center rounded-3xl border border-border bg-background/80 text-accent">
-        <LoaderCircle size={28} className="animate-spin" />
+      <div className="relative flex h-16 w-16 items-center justify-center rounded-3xl border border-border bg-background/80 text-textPrimary">
+        <ProjectIcon className="h-8 w-8" />
+        <LoaderCircle size={16} className="absolute -bottom-1 -right-1 animate-spin rounded-full bg-background text-accent" />
       </div>
       <h2 className="mt-6 text-2xl font-mono text-textPrimary">{title}</h2>
       <p className="mt-2 text-sm font-mono text-textMuted">{subtitle}</p>
@@ -615,13 +617,18 @@ export function PublicDashboard() {
 
           <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="space-y-3">
-              <div>
-                <h1 className="text-3xl font-mono font-semibold tracking-tight text-textPrimary md:text-4xl">
-                  {data?.siteTitle || copy.title}
-                </h1>
-                <p className="mt-2 max-w-2xl text-sm text-textSecondary">
-                  {data?.siteSubtitle || copy.subtitle}
-                </p>
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl border border-border bg-background/80 text-textPrimary shadow-sm">
+                  <ProjectIcon className="h-6 w-6" />
+                </div>
+                <div>
+                  <h1 className="text-3xl font-mono font-semibold tracking-tight text-textPrimary md:text-4xl">
+                    {data?.siteTitle || copy.title}
+                  </h1>
+                  <p className="mt-2 max-w-2xl text-sm text-textSecondary">
+                    {data?.siteSubtitle || copy.subtitle}
+                  </p>
+                </div>
               </div>
               <SchedulerStatusPill nextProbeAt={data?.nextProbeAt ?? null} dashboardTone={dashboardTone} copy={copy} successLabel={rangeSuccessLabel} />
             </div>
@@ -770,10 +777,7 @@ export function PublicDashboard() {
 
         <footer className="flex flex-col items-center justify-center gap-4 pb-4 pt-10 text-sm font-mono text-textMuted">
           <a href={PROJECT_REPOSITORY_URL} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 transition-colors hover:text-textPrimary">
-            <svg aria-label="GitHub" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
-              <title>GitHub</title>
-              <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" />
-            </svg>
+            <ProjectIcon className="h-4 w-4" />
             Powered by Model Status
           </a>
         </footer>

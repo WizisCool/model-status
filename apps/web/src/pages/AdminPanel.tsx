@@ -11,6 +11,7 @@ import type {
 } from "@model-status/shared";
 
 import { ModelManagerSection } from "../components/ModelManagerSection";
+import { ProjectIcon } from "../components/ProjectIcon";
 import { getAdminCopy, type SettingGroupConfig } from "../adminCopy";
 import { ToastRegion, type ToastNotice, type ToastTone } from "../components/ToastRegion";
 import { normalizeLanguage, type Language } from "../i18n";
@@ -435,9 +436,14 @@ export function AdminPanel() {
 
             <div className="relative flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
               <div className="max-w-xl space-y-3">
-                <div>
-                  <h1 className="text-3xl font-mono font-semibold tracking-tight text-textPrimary md:text-4xl">{copy.adminDashboard}</h1>
-                  <p className="mt-2 text-sm text-textSecondary">{adminCopy.workspaceIntro}</p>
+                <div className="flex items-start gap-4">
+                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl border border-border bg-background/80 text-textPrimary shadow-sm">
+                    <ProjectIcon className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h1 className="text-3xl font-mono font-semibold tracking-tight text-textPrimary md:text-4xl">{copy.adminDashboard}</h1>
+                    <p className="mt-2 text-sm text-textSecondary">{adminCopy.workspaceIntro}</p>
+                  </div>
                 </div>
               </div>
 
@@ -479,11 +485,16 @@ export function AdminPanel() {
 
           <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="space-y-3">
-              <div>
-                <h1 className="text-3xl font-mono font-semibold tracking-tight text-textPrimary md:text-4xl">{copy.adminDashboard}</h1>
-                <p className="mt-2 max-w-2xl text-sm text-textSecondary">
-                  {adminCopy.workspaceIntro}
-                </p>
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl border border-border bg-background/80 text-textPrimary shadow-sm">
+                  <ProjectIcon className="h-6 w-6" />
+                </div>
+                <div>
+                  <h1 className="text-3xl font-mono font-semibold tracking-tight text-textPrimary md:text-4xl">{copy.adminDashboard}</h1>
+                  <p className="mt-2 max-w-2xl text-sm text-textSecondary">
+                    {adminCopy.workspaceIntro}
+                  </p>
+                </div>
               </div>
             </div>
 

@@ -17,6 +17,7 @@ function createDbStub(): DbClient {
         ownedBy: "openai",
         displayName: null,
         icon: null,
+        isVisible: true,
         sortOrder: 0,
         syncedAt: new Date().toISOString(),
         isActive: true,
@@ -64,6 +65,7 @@ describe("model service", () => {
       id: "gpt-5",
       displayName: "GPT 5 Primary",
       icon: "openai",
+      isVisible: true,
       sortOrder: 9,
     });
   });

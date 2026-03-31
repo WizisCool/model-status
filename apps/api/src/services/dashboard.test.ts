@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { DbClient } from "../db";
-import { getDashboardData } from "./dashboard";
+import { getDashboardData, toPublicDashboardResponse } from "./dashboard";
 
 describe("dashboard service", () => {
   it("aggregates probes for selected range", () => {
@@ -16,7 +16,7 @@ describe("dashboard service", () => {
       ]),
       deactivateMissingUpstreams: vi.fn(),
       upsertModel: vi.fn(),
-      listModels: vi.fn(() => [{ upstreamId: "main", id: "gpt-4.1", created: 1, ownedBy: "openai", displayName: "GPT 4.1", icon: "openai", sortOrder: 5, syncedAt: now.toISOString(), isActive: true }]),
+      listModels: vi.fn(() => [{ upstreamId: "main", id: "gpt-4.1", created: 1, ownedBy: "openai", displayName: "GPT 4.1", icon: "openai", isVisible: true, sortOrder: 5, syncedAt: now.toISOString(), isActive: true }]),
       updateModelMetadata: vi.fn(),
       deactivateMissingModels: vi.fn(),
       getSetting: vi.fn(() => null),
@@ -112,6 +112,7 @@ describe("dashboard service", () => {
         model: "gpt-4.1",
         displayName: "GPT 4.1",
         icon: "openai",
+        isVisible: true,
         sortOrder: 5,
         created: 1,
         ownedBy: "openai",
@@ -146,6 +147,16 @@ describe("dashboard service", () => {
     expect(getDashboardData(db, "24h", config).models[0]?.recentStatuses).toHaveLength(24);
     expect(getDashboardData(db, "7d", config).models[0]?.recentStatuses).toHaveLength(7);
     expect(getDashboardData(db, "30d", config).models[0]?.recentStatuses).toHaveLength(30);
+
+    const hiddenDashboard = toPublicDashboardResponse({
+      ...result,
+      models: [
+        { ...result.models[0]!, isVisible: true },
+        { ...result.models[0]!, model: "hidden-model", displayName: "Hidden", isVisible: false },
+      ],
+    });
+    expect(hiddenDashboard.models).toHaveLength(1);
+    expect(hiddenDashboard.summary.totalModels).toBe(1);
 
     vi.useRealTimers();
   });

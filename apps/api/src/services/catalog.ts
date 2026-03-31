@@ -70,6 +70,7 @@ export async function syncModelCatalog(settings: RuntimeSettings, db: DbClient):
         ownedBy: model.owned_by ?? null,
         displayName: null,
         icon: null,
+        isVisible: true,
         sortOrder: 0,
         syncedAt,
         isActive: true,

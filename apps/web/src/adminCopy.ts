@@ -40,6 +40,8 @@ export type AdminCopy = {
   chooseIcon: string;
   hideIconOptions: string;
   showIconOptions: string;
+  visible: string;
+  hidden: string;
   upstreamsSectionDesc: string;
   runtimeSectionDesc: string;
   modelCountSuffix: string;
@@ -86,6 +88,8 @@ const adminCopyByLanguage: Record<Language, AdminCopy> = {
     chooseIcon: "Choose icon",
     hideIconOptions: "Hide icon options",
     showIconOptions: "Show icon options",
+    visible: "Visible",
+    hidden: "Hidden",
     upstreamsSectionDesc: "Manage upstream routes, grouping, credentials, and activation.",
     runtimeSectionDesc: "Tune sync cadence, concurrency, and probe thresholds.",
     modelCountSuffix: "models",
@@ -130,6 +134,8 @@ const adminCopyByLanguage: Record<Language, AdminCopy> = {
     chooseIcon: "选择图标",
     hideIconOptions: "收起图标",
     showIconOptions: "展开图标",
+    visible: "可见",
+    hidden: "隐藏",
     upstreamsSectionDesc: "管理上游地址、分组、密钥与启用状态。",
     runtimeSectionDesc: "调整同步周期、并发数与探测阈值。",
     modelCountSuffix: "个模型",

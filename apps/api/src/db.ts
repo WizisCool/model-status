@@ -9,6 +9,7 @@ export type ModelRecord = {
   ownedBy: string | null;
   displayName: string | null;
   icon: string | null;
+  isVisible: boolean;
   sortOrder: number;
   syncedAt: string;
   isActive: boolean;
@@ -54,7 +55,7 @@ export type DbClient = {
   deactivateMissingUpstreams(activeUpstreamIds: string[], updatedAt: string): void;
   upsertModel(model: ModelRecord): void;
   listModels(activeOnly?: boolean): ModelRecord[];
-  updateModelMetadata(model: { upstreamId: string; id: string; displayName: string | null; icon: string | null; sortOrder: number }): void;
+  updateModelMetadata(model: { upstreamId: string; id: string; displayName: string | null; icon: string | null; isVisible: boolean; sortOrder: number }): void;
   deactivateMissingModels(upstreamId: string, activeModelIds: string[], syncedAt: string): void;
   getSetting(key: string): string | null;
   setSetting(key: string, value: string, updatedAt: string): void;
@@ -102,6 +103,7 @@ function toModelRecord(row: Record<string, unknown>): ModelRecord {
     ownedBy: row.owned_by === null ? null : String(row.owned_by),
     displayName: row.display_name === null ? null : String(row.display_name),
     icon: row.icon === null ? null : String(row.icon),
+    isVisible: Boolean(row.is_visible),
     sortOrder: Number(row.sort_order ?? 0),
     syncedAt: String(row.synced_at),
     isActive: Boolean(row.is_active),
@@ -207,6 +209,7 @@ export function createDb(databaseFile: string): DbClient {
         owned_by TEXT,
         display_name TEXT,
         icon TEXT,
+        is_visible INTEGER NOT NULL DEFAULT 1,
         sort_order INTEGER NOT NULL DEFAULT 0,
         synced_at TEXT NOT NULL,
         is_active INTEGER NOT NULL DEFAULT 1,
@@ -229,14 +232,15 @@ export function createDb(databaseFile: string): DbClient {
         owned_by TEXT,
         display_name TEXT,
         icon TEXT,
+        is_visible INTEGER NOT NULL DEFAULT 1,
         sort_order INTEGER NOT NULL DEFAULT 0,
         synced_at TEXT NOT NULL,
         is_active INTEGER NOT NULL DEFAULT 1,
         PRIMARY KEY (upstream_id, id),
         FOREIGN KEY (upstream_id) REFERENCES upstreams(id) ON DELETE CASCADE
       );
-      INSERT INTO models (upstream_id, id, created, owned_by, display_name, icon, sort_order, synced_at, is_active)
-      SELECT 'default', id, created, owned_by, NULL, NULL, 0, synced_at, COALESCE(is_active, 1)
+      INSERT INTO models (upstream_id, id, created, owned_by, display_name, icon, is_visible, sort_order, synced_at, is_active)
+      SELECT 'default', id, created, owned_by, NULL, NULL, 1, 0, synced_at, COALESCE(is_active, 1)
       FROM models_legacy;
       DROP TABLE models_legacy;
 
@@ -255,6 +259,10 @@ export function createDb(databaseFile: string): DbClient {
 
   if (hasTable(db, "models") && !hasColumn(db, "models", "icon")) {
     db.exec("ALTER TABLE models ADD COLUMN icon TEXT;");
+  }
+
+  if (hasTable(db, "models") && !hasColumn(db, "models", "is_visible")) {
+    db.exec("ALTER TABLE models ADD COLUMN is_visible INTEGER NOT NULL DEFAULT 1;");
   }
 
   if (hasTable(db, "models") && !hasColumn(db, "models", "sort_order")) {
@@ -391,14 +399,14 @@ export function createDb(databaseFile: string): DbClient {
   `);
 
   const listActiveModelsStmt = db.prepare(`
-    SELECT upstream_id, id, created, owned_by, display_name, icon, sort_order, synced_at, is_active
+    SELECT upstream_id, id, created, owned_by, display_name, icon, is_visible, sort_order, synced_at, is_active
     FROM models
     WHERE is_active = 1
     ORDER BY upstream_id ASC, sort_order ASC, COALESCE(display_name, id) COLLATE NOCASE ASC, id ASC
   `);
 
   const listAllModelsStmt = db.prepare(`
-    SELECT upstream_id, id, created, owned_by, display_name, icon, sort_order, synced_at, is_active
+    SELECT upstream_id, id, created, owned_by, display_name, icon, is_visible, sort_order, synced_at, is_active
     FROM models
     ORDER BY upstream_id ASC, sort_order ASC, COALESCE(display_name, id) COLLATE NOCASE ASC, id ASC
   `);
@@ -411,7 +419,7 @@ export function createDb(databaseFile: string): DbClient {
 
   const updateModelMetadataStmt = db.prepare(`
     UPDATE models
-    SET display_name = ?, icon = ?, sort_order = ?
+    SET display_name = ?, icon = ?, is_visible = ?, sort_order = ?
     WHERE upstream_id = ? AND id = ?
   `);
 
@@ -571,7 +579,7 @@ export function createDb(databaseFile: string): DbClient {
       return rows.map(toModelRecord);
     },
     updateModelMetadata(model) {
-      updateModelMetadataStmt.run(model.displayName, model.icon, model.sortOrder, model.upstreamId, model.id);
+      updateModelMetadataStmt.run(model.displayName, model.icon, model.isVisible ? 1 : 0, model.sortOrder, model.upstreamId, model.id);
     },
     deactivateMissingModels(upstreamId, activeModelIds, syncedAt) {
       const activeIdSet = new Set(activeModelIds);

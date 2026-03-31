@@ -535,7 +535,7 @@ export function PublicDashboard() {
         <div className="space-y-10 animate-in fade-in duration-500">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <StatCard label={copy.totalModels} value={data.summary.totalModels} icon={<Server size={18} />} />
-            <StatCard label={copy.successRate} value={`${data.summary.availabilityPercentage.toFixed(1)}%`} icon={<Activity size={18} />} valueColor={data.summary.availabilityPercentage > 95 ? "text-success" : data.summary.availabilityPercentage > 80 ? "text-warning" : "text-error"} />
+            <StatCard label={copy.successRate} value={`${data.summary.availabilityPercentage.toFixed(1)}%`} icon={<Activity size={18} />} valueColor={data.summary.availabilityPercentage >= 80 ? "text-success" : data.summary.availabilityPercentage >= 50 ? "text-warning" : "text-error"} />
             <StatCard label={copy.successes} value={data.summary.availableModels} icon={<CheckCircle2 size={18} />} valueColor="text-success" />
             <StatCard label={copy.failures} value={data.summary.errorModels} icon={<XCircle size={18} />} valueColor={data.summary.errorModels > 0 ? "text-error" : "text-textPrimary"} />
           </div>

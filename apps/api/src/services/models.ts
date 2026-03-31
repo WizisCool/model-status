@@ -44,6 +44,7 @@ export function updateAdminModels(db: DbClient, updates: UpdateAdminModelsReques
       id: modelId,
       displayName: modelUpdate.displayName === undefined ? existingModel.displayName : normalizeNullableString(modelUpdate.displayName),
       icon: modelUpdate.icon === undefined ? existingModel.icon : normalizeNullableString(modelUpdate.icon),
+      isVisible: modelUpdate.isVisible ?? existingModel.isVisible,
       sortOrder: normalizeSortOrder(modelUpdate.sortOrder, existingModel.sortOrder),
     });
   }

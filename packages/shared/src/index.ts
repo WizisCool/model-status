@@ -66,6 +66,7 @@ export type ModelSummary = {
   model: string;
   displayName: string | null;
   icon: string | null;
+  isVisible: boolean;
   sortOrder: number;
   created: number | null;
   ownedBy: string | null;
@@ -185,6 +186,7 @@ export type UpdateAdminModelsRequest = {
     model: string;
     displayName?: string | null;
     icon?: string | null;
+    isVisible?: boolean;
     sortOrder?: number;
   }>;
 };

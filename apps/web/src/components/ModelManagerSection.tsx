@@ -18,7 +18,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Save, X } from "lucide-react";
+import { Eye, EyeOff, GripVertical, Save, X } from "lucide-react";
 import { createPortal } from "react-dom";
 import { useMemo, useState } from "react";
 
@@ -139,11 +139,13 @@ function SortableModelRow({
   language,
   onDisplayNameChange,
   onOpenIconPicker,
+  onToggleVisibility,
 }: {
   model: EditableModel;
   language: "en" | "zh-CN";
   onDisplayNameChange: (value: string) => void;
   onOpenIconPicker: () => void;
+  onToggleVisibility: () => void;
 }) {
   const copy = getAdminCopy(language);
   const displayLabel = getModelLabel(model, copy);
@@ -208,6 +210,17 @@ function SortableModelRow({
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={onToggleVisibility}
+                className={`glass-button inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-mono ${
+                  model.isVisible ? "text-textPrimary" : "text-textMuted"
+                }`}
+                aria-label={model.isVisible ? "Hide model from public dashboard" : "Show model on public dashboard"}
+              >
+                {model.isVisible ? <Eye size={13} /> : <EyeOff size={13} />}
+                <span>{model.isVisible ? copy.visible : copy.hidden}</span>
+              </button>
               <div className={`rounded-full border px-2.5 py-1 text-[11px] font-mono ${getStatusTone(model.latestStatus)}`}>
                 {getStatusLabel(language, model.latestStatus)}
               </div>
@@ -232,7 +245,7 @@ export function ModelManagerSection({
 }: {
   models: EditableModel[];
   isSaving: boolean;
-  onChange: (upstreamId: string, modelId: string, field: "displayName" | "icon" | "sortOrder", value: string | number | null) => void;
+  onChange: (upstreamId: string, modelId: string, field: "displayName" | "icon" | "sortOrder" | "isVisible", value: string | number | boolean | null) => void;
   onReorder: (upstreamId: string, orderedModelIds: string[]) => void;
   onSave: () => void;
   language: "en" | "zh-CN";
@@ -359,6 +372,7 @@ export function ModelManagerSection({
                               language={language}
                               onDisplayNameChange={(value) => onChange(model.upstreamId, model.model, "displayName", value)}
                               onOpenIconPicker={() => setIconTarget(model)}
+                              onToggleVisibility={() => onChange(model.upstreamId, model.model, "isVisible", !model.isVisible)}
                             />
                           ))}
                         </div>

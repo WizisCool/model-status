@@ -101,7 +101,7 @@ function detectIconKey(modelId: string, ownedBy: string | null): Exclude<ModelIc
 
 function resolveOpenAIAvatarType(modelId: string): OpenAIAvatarType {
   const normalized = modelId.toLowerCase();
-  if (normalized.includes("gpt-5")) return "gpt5";
+  if (normalized.includes("gpt-5")) return "platform";
   if (normalized.includes("gpt-4")) return "gpt4";
   if (normalized.includes("gpt-3")) return "gpt3";
   if (normalized.includes("o1")) return "o1";

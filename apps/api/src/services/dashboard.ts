@@ -130,6 +130,7 @@ function summarizeModel(modelRecord: ModelRecord, upstreamName: string, upstream
     model: modelRecord.id,
     displayName: modelRecord.displayName,
     icon: modelRecord.icon,
+    isVisible: modelRecord.isVisible,
     sortOrder: modelRecord.sortOrder,
     created: modelRecord.created,
     ownedBy: modelRecord.ownedBy,
@@ -243,6 +244,14 @@ export function getDashboardData(
 }
 
 export function toPublicDashboardResponse(dashboard: AdminDashboardResponse): DashboardResponse {
+  const visibleModels = dashboard.models.filter((model) => model.isVisible);
+  const availableModels = visibleModels.filter((model) => model.latestStatus === "up").length;
+  const degradedModels = visibleModels.filter((model) => model.latestStatus === "degraded").length;
+  const errorModels = visibleModels.filter((model) => model.latestStatus === "down").length;
+  const availabilityPercentage = visibleModels.length === 0
+    ? 0
+    : Number((visibleModels.reduce((sum, model) => sum + model.availabilityPercentage, 0) / visibleModels.length).toFixed(2));
+
   return {
     range: dashboard.range,
     from: dashboard.from,
@@ -251,7 +260,13 @@ export function toPublicDashboardResponse(dashboard: AdminDashboardResponse): Da
     siteTitle: dashboard.siteTitle,
     siteSubtitle: dashboard.siteSubtitle,
     githubRepoUrl: dashboard.githubRepoUrl,
-    summary: dashboard.summary,
-    models: dashboard.models,
+    summary: {
+      totalModels: visibleModels.length,
+      availableModels,
+      degradedModels,
+      errorModels,
+      availabilityPercentage,
+    },
+    models: visibleModels,
   };
 }

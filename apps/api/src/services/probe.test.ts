@@ -64,7 +64,7 @@ describe("probe helpers", () => {
       listUpstreams: vi.fn(() => []),
       deactivateMissingUpstreams: vi.fn(),
       listModels: vi.fn(() => [
-        { upstreamId: "main", id: "gpt-empty", created: null, ownedBy: null, displayName: null, icon: null, sortOrder: 0, syncedAt: new Date().toISOString(), isActive: true },
+        { upstreamId: "main", id: "gpt-empty", created: null, ownedBy: null, displayName: null, icon: null, isVisible: true, sortOrder: 0, syncedAt: new Date().toISOString(), isActive: true },
       ]),
       updateModelMetadata: vi.fn(),
       deactivateMissingModels: vi.fn(),
@@ -111,7 +111,7 @@ describe("probe helpers", () => {
       listUpstreams: vi.fn(() => []),
       deactivateMissingUpstreams: vi.fn(),
       listModels: vi.fn(() => [
-        { upstreamId: "main", id: "gpt-ok", created: null, ownedBy: null, displayName: null, icon: null, sortOrder: 0, syncedAt: new Date().toISOString(), isActive: true },
+        { upstreamId: "main", id: "gpt-ok", created: null, ownedBy: null, displayName: null, icon: null, isVisible: true, sortOrder: 0, syncedAt: new Date().toISOString(), isActive: true },
       ]),
       updateModelMetadata: vi.fn(),
       deactivateMissingModels: vi.fn(),
@@ -170,7 +170,7 @@ describe("probe helpers", () => {
       listUpstreams: vi.fn(() => []),
       deactivateMissingUpstreams: vi.fn(),
       listModels: vi.fn(() => [
-        { upstreamId: "main", id: "gpt-stream-error", created: null, ownedBy: null, displayName: null, icon: null, sortOrder: 0, syncedAt: new Date().toISOString(), isActive: true },
+        { upstreamId: "main", id: "gpt-stream-error", created: null, ownedBy: null, displayName: null, icon: null, isVisible: true, sortOrder: 0, syncedAt: new Date().toISOString(), isActive: true },
       ]),
       updateModelMetadata: vi.fn(),
       deactivateMissingModels: vi.fn(),
@@ -225,7 +225,7 @@ describe("probe helpers", () => {
       listUpstreams: vi.fn(() => []),
       deactivateMissingUpstreams: vi.fn(),
       listModels: vi.fn(() => [
-        { upstreamId: "main", id: "gpt-retry", created: null, ownedBy: null, displayName: null, icon: null, sortOrder: 0, syncedAt: new Date().toISOString(), isActive: true },
+        { upstreamId: "main", id: "gpt-retry", created: null, ownedBy: null, displayName: null, icon: null, isVisible: true, sortOrder: 0, syncedAt: new Date().toISOString(), isActive: true },
       ]),
       updateModelMetadata: vi.fn(),
       deactivateMissingModels: vi.fn(),

@@ -295,7 +295,7 @@ export function AdminPanel() {
     });
   }
 
-  function handleModelChange(upstreamId: string, modelId: string, field: "displayName" | "icon" | "sortOrder", value: string | number | null) {
+  function handleModelChange(upstreamId: string, modelId: string, field: "displayName" | "icon" | "sortOrder" | "isVisible", value: string | number | boolean | null) {
     setEditableModels((current) =>
       current.map((model) =>
         model.upstreamId === upstreamId && model.model === modelId ? { ...model, [field]: value } : model,
@@ -324,6 +324,7 @@ export function AdminPanel() {
           model: model.model,
           displayName: model.displayName,
           icon: model.icon,
+          isVisible: model.isVisible,
           sortOrder: model.sortOrder,
         })),
       };

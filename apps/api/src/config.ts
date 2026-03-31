@@ -101,6 +101,20 @@ function trimTrailingSlash(value: string): string {
   return value.replace(/\/+$/u, "");
 }
 
+function deriveOrigin(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "";
+  }
+
+  try {
+    const url = new URL(trimmed);
+    return url.origin;
+  } catch {
+    return "";
+  }
+}
+
 export type AppConfig = {
   workspaceRoot: string;
   webDistDir: string;
@@ -140,7 +154,10 @@ function normalizeBasePath(value: string): string {
 export function loadConfig(envSource: EnvSource = process.env): AppConfig {
   const workspaceRoot = findWorkspaceRoot(__dirname);
   const env = { ...loadFileEnv(__dirname), ...envSource };
-  const webOrigin = readString(env, "WEB_ORIGIN", "http://localhost:5173");
+  const rawWebOrigin = env.WEB_ORIGIN?.trim() ?? "";
+  const rawAccessUrl = env.ACCESS_URL?.trim() ?? "";
+  const fallbackOrigin = rawAccessUrl ? deriveOrigin(rawAccessUrl) || "http://localhost:5173" : "http://localhost:5173";
+  const webOrigin = rawWebOrigin || fallbackOrigin;
   const accessUrl = readString(env, "ACCESS_URL", webOrigin);
 
   return {

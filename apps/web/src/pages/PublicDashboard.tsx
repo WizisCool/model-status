@@ -180,7 +180,7 @@ function SchedulerStatusPill({
   }, []);
 
   return (
-    <div className="inline-flex flex-wrap items-center gap-2 rounded-full border border-border bg-background/70 px-3 py-1 text-xs font-mono text-textSecondary shadow-sm">
+    <div className="inline-flex max-w-full flex-wrap items-center gap-2 rounded-full border border-border bg-background/70 px-3 py-1 text-[11px] font-mono text-textSecondary shadow-sm sm:text-xs">
       <Indicator tone={dashboardTone} />
       <span>{formatCountdown(nextProbeAt, nowMs, copy)}</span>
       {successLabel ? <span className="text-textMuted">|</span> : null}
@@ -392,6 +392,68 @@ function ModelRow({
         </div>
       </td>
     </tr>
+  );
+}
+
+function MobileModelListItem({
+  model,
+  range,
+  copy,
+  language,
+  isProbeCycleRunning,
+}: {
+  model: ModelSummary;
+  range: DashboardRange;
+  copy: Translation;
+  language: Language;
+  isProbeCycleRunning: boolean;
+}) {
+  const displayLabel = getModelLabel(model);
+  const showModelId = displayLabel !== model.model;
+
+  return (
+    <div className="rounded-[22px] border border-border bg-surface/72 p-4 shadow-sm shadow-black/5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <ModelIcon icon={model.icon} modelId={model.model} ownedBy={model.ownedBy} size={18} className="text-textPrimary" />
+            <h3 className="truncate font-mono text-[0.98rem] font-semibold text-textPrimary" title={displayLabel}>
+              {displayLabel}
+            </h3>
+          </div>
+          {showModelId ? <div className="mt-1 truncate pl-[26px] text-xs text-textMuted">{model.model}</div> : null}
+        </div>
+        <Indicator tone={model.latestStatus} />
+      </div>
+
+      <div className="mt-4 space-y-2">
+        <div className="text-[11px] font-mono uppercase tracking-[0.18em] text-textMuted">{copy.recentStatus}</div>
+        <StatusBars statuses={model.recentStatuses} range={range} copy={copy} language={language} isProbeCycleRunning={isProbeCycleRunning} />
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-x-3 gap-y-3 text-sm">
+        <div>
+          <div className="text-[11px] font-mono uppercase tracking-[0.18em] text-textMuted">{copy.successRate}</div>
+          <div className="mt-1 font-mono text-textPrimary">{`${model.availabilityPercentage.toFixed(1)}%`}</div>
+        </div>
+        <div>
+          <div className="text-[11px] font-mono uppercase tracking-[0.18em] text-textMuted">{copy.connectivity}</div>
+          <div className="mt-1 font-mono text-textPrimary">{model.avgConnectivityLatencyMs ? `${Math.round(model.avgConnectivityLatencyMs)}ms` : "--"}</div>
+        </div>
+        <div>
+          <div className="text-[11px] font-mono uppercase tracking-[0.18em] text-textMuted">{copy.totalLatency}</div>
+          <div className="mt-1 font-mono text-textPrimary">{model.avgTotalLatencyMs ? `${Math.round(model.avgTotalLatencyMs)}ms` : "--"}</div>
+        </div>
+        <div>
+          <div className="text-[11px] font-mono uppercase tracking-[0.18em] text-textMuted">{copy.ttft}</div>
+          <div className="mt-1 font-mono text-textPrimary">{model.avgFirstTokenLatencyMs ? `${Math.round(model.avgFirstTokenLatencyMs)}ms` : "--"}</div>
+        </div>
+      </div>
+
+      <div className="mt-4 border-t border-border pt-3 text-xs font-mono text-textMuted">
+        {`${copy.lastProbe}: ${formatDateTime(model.lastProbeAt, language, { hour: "2-digit", minute: "2-digit", second: "2-digit" }, copy)}`}
+      </div>
+    </div>
   );
 }
 
@@ -609,18 +671,15 @@ export function PublicDashboard() {
   return (
     <div className="min-h-screen px-4 py-6 font-sans md:px-6 md:py-8 lg:px-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        <header className="relative overflow-hidden rounded-[32px] border border-border bg-gradient-to-br from-surface via-surface to-accent/40 p-6 shadow-2xl shadow-black/10 md:p-8">
+        <header className="relative overflow-hidden rounded-[32px] border border-border bg-gradient-to-br from-surface via-surface to-accent/40 p-5 shadow-2xl shadow-black/10 sm:p-6 md:p-8">
           <div className="pointer-events-none absolute inset-0 opacity-60">
             <div className="absolute -right-16 top-0 h-40 w-40 rounded-full bg-success/10 blur-3xl" />
             <div className="absolute left-0 top-24 h-48 w-48 rounded-full bg-accent/20 blur-3xl" />
           </div>
 
-          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div className="grid grid-cols-[auto,minmax(0,1fr)] items-center gap-x-4 gap-y-3">
-              <div className="row-span-2 flex h-14 w-14 flex-shrink-0 items-center justify-center self-center rounded-[20px] border border-border bg-background/78 text-textPrimary shadow-[0_16px_36px_-24px_rgba(15,23,42,0.9)]">
-                <ProjectIcon className="h-7 w-7" />
-              </div>
-              <div className="min-w-0">
+          <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div className="min-w-0 space-y-3">
+              <div>
                 <h1 className="text-3xl font-mono font-semibold tracking-tight text-textPrimary md:text-4xl">
                   {data?.siteTitle || copy.title}
                 </h1>
@@ -628,59 +687,59 @@ export function PublicDashboard() {
                   {data?.siteSubtitle || copy.subtitle}
                 </p>
               </div>
-              <div className="min-w-0">
-                <SchedulerStatusPill nextProbeAt={data?.nextProbeAt ?? null} dashboardTone={dashboardTone} copy={copy} successLabel={rangeSuccessLabel} />
-              </div>
+              <SchedulerStatusPill nextProbeAt={data?.nextProbeAt ?? null} dashboardTone={dashboardTone} copy={copy} successLabel={rangeSuccessLabel} />
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="flex rounded-2xl border border-border bg-background/70 p-1 shadow-sm">
+            <div className="flex w-full flex-col gap-3 lg:w-auto lg:items-end">
+              <div className="flex w-full min-w-0 rounded-2xl border border-border bg-background/70 p-1 shadow-sm sm:w-auto">
                 {(["90m", "24h", "7d", "30d"] as DashboardRange[]).map((value) => (
                   <button
                     key={value}
                     type="button"
                     onClick={() => handleRangeChange(value)}
-                    className={`rounded-xl px-4 py-1.5 text-sm font-mono transition-colors ${range === value ? "bg-accent text-textPrimary shadow-sm" : "text-textSecondary hover:bg-surfaceHover hover:text-textPrimary"}`}
+                    className={`min-w-0 flex-1 rounded-xl px-2 py-2 text-center text-sm font-mono transition-colors sm:flex-none sm:px-4 sm:py-1.5 ${range === value ? "bg-accent text-textPrimary shadow-sm" : "text-textSecondary hover:bg-surfaceHover hover:text-textPrimary"}`}
                   >
                     {value}
                   </button>
                 ))}
               </div>
 
-              <div className="flex rounded-2xl border border-border bg-background/70 p-1 shadow-sm">
-                <button
-                  type="button"
-                  onClick={() => setViewMode("grid")}
-                  className={`rounded-xl p-2 transition-colors ${viewMode === "grid" ? "bg-accent text-textPrimary" : "text-textSecondary hover:bg-surfaceHover hover:text-textPrimary"}`}
-                >
-                  <LayoutGrid size={16} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode("list")}
-                  className={`rounded-xl p-2 transition-colors ${viewMode === "list" ? "bg-accent text-textPrimary" : "text-textSecondary hover:bg-surfaceHover hover:text-textPrimary"}`}
-                >
-                  <List size={16} />
-                </button>
-              </div>
-
-              <div className="flex items-center gap-2">
-                {isAdmin ? (
-                  <a
-                    href="/admin"
-                    className="glass-button flex h-10 w-10 items-center justify-center rounded-xl text-textSecondary hover:text-textPrimary"
-                    title={copy.adminDashboard}
-                    aria-label={copy.adminDashboard}
+              <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:justify-end">
+                <div className="flex rounded-2xl border border-border bg-background/70 p-1 shadow-sm">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode("grid")}
+                    className={`rounded-xl p-2 transition-colors ${viewMode === "grid" ? "bg-accent text-textPrimary" : "text-textSecondary hover:bg-surfaceHover hover:text-textPrimary"}`}
                   >
-                    <Shield size={16} />
-                  </a>
-                ) : null}
-                <button type="button" onClick={toggleLanguage} className="glass-button rounded-xl p-2 text-textSecondary hover:text-textPrimary" title={copy.toggleLanguage}>
-                  <Languages size={16} />
-                </button>
-                <button type="button" onClick={toggleTheme} className="glass-button rounded-xl p-2 text-textSecondary hover:text-textPrimary" title={copy.toggleTheme}>
-                  {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
-                </button>
+                    <LayoutGrid size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode("list")}
+                    className={`rounded-xl p-2 transition-colors ${viewMode === "list" ? "bg-accent text-textPrimary" : "text-textSecondary hover:bg-surfaceHover hover:text-textPrimary"}`}
+                  >
+                    <List size={16} />
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {isAdmin ? (
+                    <a
+                      href="/admin"
+                      className="glass-button flex h-10 w-10 items-center justify-center rounded-xl text-textSecondary hover:text-textPrimary"
+                      title={copy.adminDashboard}
+                      aria-label={copy.adminDashboard}
+                    >
+                      <Shield size={16} />
+                    </a>
+                  ) : null}
+                  <button type="button" onClick={toggleLanguage} className="glass-button rounded-xl p-2 text-textSecondary hover:text-textPrimary" title={copy.toggleLanguage}>
+                    <Languages size={16} />
+                  </button>
+                  <button type="button" onClick={toggleTheme} className="glass-button rounded-xl p-2 text-textSecondary hover:text-textPrimary" title={copy.toggleTheme}>
+                    {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -705,7 +764,7 @@ export function PublicDashboard() {
               </section>
             ) : null}
 
-            <section className="glass-panel rounded-[28px] border border-border p-6 shadow-lg shadow-black/5">
+            <section className="glass-panel rounded-[28px] border border-border p-5 shadow-lg shadow-black/5 sm:p-6">
               <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
                 <div>
                   <h2 className="text-2xl font-mono text-textPrimary">{copy.monitoredModels}</h2>
@@ -745,8 +804,14 @@ export function PublicDashboard() {
                               ))}
                             </div>
                           ) : (
-                            <div className="overflow-hidden rounded-[24px] border border-border bg-surface/72">
-                              <table className="w-full text-left text-sm">
+                            <>
+                              <div className="space-y-3 md:hidden">
+                                {upstream.models.map((model) => (
+                                  <MobileModelListItem key={model.model} model={model} range={range} copy={copy} language={language} isProbeCycleRunning={isProbeCycleRunning} />
+                                ))}
+                              </div>
+                              <div className="hidden overflow-x-auto rounded-[24px] border border-border bg-surface/72 md:block">
+                                <table className="min-w-[760px] w-full text-left text-sm">
                                 <thead className="border-b border-border bg-background/70 text-[11px] font-mono uppercase tracking-[0.18em] text-textSecondary">
                                   <tr>
                                     <th className="px-6 py-4">{copy.model}</th>
@@ -762,8 +827,9 @@ export function PublicDashboard() {
                                     <ModelRow key={model.model} model={model} range={range} copy={copy} language={language} isProbeCycleRunning={isProbeCycleRunning} />
                                   ))}
                                 </tbody>
-                              </table>
-                            </div>
+                                </table>
+                              </div>
+                            </>
                           )}
                         </div>
                       ))}

@@ -10,6 +10,7 @@ import type {
 
 import { ModelManagerSection } from "../components/ModelManagerSection";
 import { getAdminCopy } from "../adminCopy";
+import { getAdminSettingFields } from "../adminSettingFields";
 import { ToastRegion, type ToastNotice, type ToastTone } from "../components/ToastRegion";
 import { getTranslation, normalizeLanguage, type Language } from "../i18n";
 import { applyTheme, getInitialTheme, type ThemeMode } from "../preferences";
@@ -44,8 +45,13 @@ async function readResponseMessage(response: Response, fallback: string): Promis
 }
 
 function getToastTitle(language: Language, tone: ToastTone): string {
+  if (language === "zh-CN") {
+    if (tone === "success") return "成功";
+    if (tone === "error") return "操作失败";
+    return "提示";
+  }
   if (tone === "success") return "Success";
-  if (tone === "error") return language === "zh-CN" ? "Action failed" : "Action failed";
+  if (tone === "error") return "Action failed";
   return "Notice";
 }
 
@@ -69,7 +75,8 @@ export function AdminPanel() {
 
   const copy = useMemo(() => getTranslation(language), [language]);
   const adminCopy = useMemo(() => getAdminCopy(language), [language]);
-  const requestFailedCopy = "Request failed";
+  const settingFields = useMemo(() => getAdminSettingFields(language), [language]);
+  const requestFailedCopy = language === "zh-CN" ? "请求失败" : "Request failed";
 
   const dismissNotification = useCallback((id: number) => {
     const timer = toastTimersRef.current.get(id);
@@ -261,31 +268,9 @@ export function AdminPanel() {
     );
   }
 
-  function reorderModels(upstreamId: string, draggedModelId: string, targetModelId: string | null) {
+  function reorderModels(upstreamId: string, orderedModelIds: string[]) {
     setEditableModels((current) => {
-      const scopedModels = [...current]
-        .filter((model) => model.upstreamId === upstreamId)
-        .sort((left, right) => {
-          const orderComparison = left.sortOrder - right.sortOrder;
-          if (orderComparison !== 0) return orderComparison;
-          return (left.displayName ?? left.model).localeCompare(right.displayName ?? right.model);
-        });
-      const draggedIndex = scopedModels.findIndex((model) => model.model === draggedModelId);
-      if (draggedIndex < 0) return current;
-
-      const reordered = [...scopedModels];
-      const [draggedModel] = reordered.splice(draggedIndex, 1);
-      if (!draggedModel) return current;
-
-      if (!targetModelId) {
-        reordered.push(draggedModel);
-      } else {
-        const targetIndex = reordered.findIndex((model) => model.model === targetModelId);
-        if (targetIndex < 0) return current;
-        reordered.splice(targetIndex, 0, draggedModel);
-      }
-
-      const nextSortOrder = new Map(reordered.map((model, index) => [model.model, index + 1]));
+      const nextSortOrder = new Map(orderedModelIds.map((modelId, index) => [modelId, index + 1]));
       return current.map((model) =>
         model.upstreamId === upstreamId && nextSortOrder.has(model.model)
           ? { ...model, sortOrder: nextSortOrder.get(model.model)! }
@@ -348,16 +333,39 @@ export function AdminPanel() {
 
   if (!session.authenticated) {
     return (
-      <div className="min-h-screen p-6 md:p-10 max-w-xl mx-auto font-sans">
+      <div className="min-h-screen px-4 py-6 font-sans md:px-6 md:py-8">
         <ToastRegion notices={notifications} onDismiss={dismissNotification} />
-        <div className="glass-panel p-8 rounded-lg space-y-4">
-          <h1 className="text-2xl font-mono text-textPrimary">{copy.adminDashboard}</h1>
-          <p className="text-textSecondary">{copy.subtitle}</p>
-          <input value={username} onChange={(event) => setUsername(event.target.value)} placeholder={copy.username} className="w-full bg-surface border border-border rounded-md px-3 py-2 text-textPrimary" />
-          <input value={password} onChange={(event) => setPassword(event.target.value)} placeholder={copy.password} type="password" className="w-full bg-surface border border-border rounded-md px-3 py-2 text-textPrimary" />
-          <button type="button" onClick={login} className="glass-button px-4 py-2 rounded-md font-mono text-sm">{copy.login}</button>
-          <button type="button" onClick={() => setLanguage((prev) => (prev === "en" ? "zh-CN" : "en"))} className="glass-button px-4 py-2 rounded-md font-mono text-sm">{copy.toggleLanguage}</button>
-          <button type="button" onClick={() => setTheme((prev) => (prev === "dark" ? "light" : "dark"))} className="glass-button px-4 py-2 rounded-md font-mono text-sm">{copy.toggleTheme}</button>
+        <div className="mx-auto max-w-5xl">
+          <div className="relative overflow-hidden rounded-[32px] border border-border bg-gradient-to-br from-surface via-surface to-accent/40 p-6 shadow-2xl shadow-black/10 md:p-8">
+            <div className="pointer-events-none absolute inset-0 opacity-60">
+              <div className="absolute -right-16 top-0 h-40 w-40 rounded-full bg-success/10 blur-3xl" />
+              <div className="absolute left-0 top-24 h-48 w-48 rounded-full bg-accent/20 blur-3xl" />
+            </div>
+
+            <div className="relative flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+              <div className="max-w-xl space-y-3">
+                <div className="inline-flex items-center rounded-full border border-border bg-background/70 px-3 py-1 text-xs font-mono uppercase tracking-[0.28em] text-textMuted">
+                  {adminCopy.controlSurface}
+                </div>
+                <div>
+                  <h1 className="text-3xl font-mono font-semibold tracking-tight text-textPrimary md:text-4xl">{copy.adminDashboard}</h1>
+                  <p className="mt-2 text-sm text-textSecondary">{adminCopy.workspaceIntro}</p>
+                </div>
+              </div>
+
+              <div className="glass-panel w-full max-w-md rounded-[28px] border border-border p-6 shadow-lg shadow-black/5">
+                <div className="flex justify-end gap-2">
+                  <button type="button" onClick={() => setLanguage((prev) => (prev === "en" ? "zh-CN" : "en"))} className="glass-button rounded-xl px-4 py-2 text-sm font-mono">{copy.toggleLanguage}</button>
+                  <button type="button" onClick={() => setTheme((prev) => (prev === "dark" ? "light" : "dark"))} className="glass-button rounded-xl px-4 py-2 text-sm font-mono">{copy.toggleTheme}</button>
+                </div>
+                <div className="mt-5 space-y-4">
+                  <input value={username} onChange={(event) => setUsername(event.target.value)} placeholder={copy.username} className="w-full rounded-xl border border-border bg-background/70 px-3 py-2 text-textPrimary" />
+                  <input value={password} onChange={(event) => setPassword(event.target.value)} placeholder={copy.password} type="password" className="w-full rounded-xl border border-border bg-background/70 px-3 py-2 text-textPrimary" />
+                  <button type="button" onClick={login} className="glass-button w-full rounded-xl px-4 py-2 font-mono text-sm">{copy.login}</button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -395,6 +403,12 @@ export function AdminPanel() {
                 <div className="text-[11px] font-mono uppercase tracking-[0.22em] text-textMuted">{adminCopy.operator}</div>
                 <div className="mt-1 text-sm font-mono text-textPrimary">{session.username}</div>
               </div>
+              <button type="button" onClick={() => setLanguage((prev) => (prev === "en" ? "zh-CN" : "en"))} className="glass-button rounded-xl px-4 py-2 text-sm font-mono">
+                {copy.toggleLanguage}
+              </button>
+              <button type="button" onClick={() => setTheme((prev) => (prev === "dark" ? "light" : "dark"))} className="glass-button rounded-xl px-4 py-2 text-sm font-mono">
+                {copy.toggleTheme}
+              </button>
               <a href="/" className="glass-button rounded-xl px-4 py-2 text-sm font-mono text-textSecondary hover:text-textPrimary">{copy.publicDashboard}</a>
               <button type="button" onClick={logout} className="glass-button rounded-xl px-4 py-2 text-sm font-mono">{copy.logout}</button>
             </div>
@@ -587,22 +601,36 @@ export function AdminPanel() {
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  {Object.entries(settings.settings).map(([key, value]) => (
-                    <label key={key} className="space-y-1 text-sm text-textSecondary">
-                      <span className="font-mono text-xs uppercase">{key}</span>
-                      <input
-                        value={String(value)}
-                        onChange={(event) =>
-                          setSettings((current) =>
-                            current
-                              ? { ...current, settings: { ...current.settings, [key]: typeof value === "number" ? Number(event.target.value) : event.target.value } }
-                              : current,
-                          )
-                        }
-                        className="w-full rounded-xl border border-border bg-background/70 px-3 py-2 text-textPrimary"
-                      />
-                    </label>
-                  ))}
+                  {settingFields.map((field) => {
+                    const value = settings.settings[field.key];
+                    return (
+                      <label key={field.key} className="space-y-2 rounded-2xl border border-border bg-surface/55 p-4 text-sm text-textSecondary">
+                        <div className="space-y-1">
+                          <span className="font-mono text-xs uppercase">{field.label}</span>
+                          <p className="text-xs text-textMuted">{field.description}</p>
+                        </div>
+                        <input
+                          type={field.type}
+                          step={field.step}
+                          value={String(value)}
+                          onChange={(event) =>
+                            setSettings((current) =>
+                              current
+                                ? {
+                                    ...current,
+                                    settings: {
+                                      ...current.settings,
+                                      [field.key]: field.type === "number" ? Number(event.target.value) : event.target.value,
+                                    },
+                                  }
+                                : current,
+                            )
+                          }
+                          className="w-full rounded-xl border border-border bg-background/70 px-3 py-2 text-textPrimary"
+                        />
+                      </label>
+                    );
+                  })}
                 </div>
               </section>
             ) : null}

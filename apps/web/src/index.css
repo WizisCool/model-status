@@ -4,14 +4,14 @@
 
 @layer base {
   :root {
-    --background: #f8f9fa;
+    --background: #eef3f9;
     --surface: #ffffff;
-    --surfaceHover: #f1f3f5;
-    --border: #e9ecef;
-    --textPrimary: #212529;
-    --textSecondary: #6c757d;
-    --textMuted: #adb5bd;
-    --accent: #e9ecef;
+    --surfaceHover: #e7edf5;
+    --border: #ccd7e5;
+    --textPrimary: #0f172a;
+    --textSecondary: #334155;
+    --textMuted: #64748b;
+    --accent: #dbe7ff;
     --success: #10b981;
     --warning: #f59e0b;
     --error: #ef4444;
@@ -36,8 +36,10 @@
   }
 
   body {
-    background-image: radial-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px);
-    background-size: 32px 32px;
+    background-image:
+      radial-gradient(rgba(15, 23, 42, 0.05) 1px, transparent 1px),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(238, 243, 249, 0.95) 100%);
+    background-size: 28px 28px, 100% 100%;
   }
   
   .dark body {
@@ -48,7 +50,7 @@
 @layer utilities {
   .glass-panel {
     @apply backdrop-blur-md border border-border shadow-sm;
-    background-color: color-mix(in srgb, var(--surface) 80%, transparent);
+    background-color: color-mix(in srgb, var(--surface) 88%, transparent);
   }
   
   .dark .glass-panel {

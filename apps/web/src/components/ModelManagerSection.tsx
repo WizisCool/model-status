@@ -1,16 +1,31 @@
 import type { AdminDashboardResponse } from "@model-status/shared";
-import { ChevronDown, ChevronUp, GripVertical, Save } from "lucide-react";
+import {
+  closestCenter,
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { GripVertical, Save, X } from "lucide-react";
+import { createPortal } from "react-dom";
 import { useMemo, useState } from "react";
 
 import { getAdminCopy } from "../adminCopy";
 import { ModelIcon, MODEL_ICON_OPTIONS } from "./ModelIcon";
 
 type EditableModel = AdminDashboardResponse["models"][number];
-
-type DragState = {
-  upstreamId: string;
-  modelId: string;
-};
 
 function sortModels(models: EditableModel[]): EditableModel[] {
   return [...models].sort((left, right) => {
@@ -38,141 +53,172 @@ function getStatusTone(latestStatus: EditableModel["latestStatus"]): string {
   }
 }
 
-function IconPicker({
+function getStatusLabel(language: "en" | "zh-CN", status: EditableModel["latestStatus"]): string {
+  const copy = getAdminCopy(language);
+  switch (status) {
+    case "up":
+      return copy.up;
+    case "degraded":
+      return copy.degraded;
+    case "down":
+      return copy.down;
+    default:
+      return copy.emptyStatus;
+  }
+}
+
+function getModelLabel(model: EditableModel, copy: ReturnType<typeof getAdminCopy>): string {
+  return model.displayName?.trim() || model.model || copy.modelId;
+}
+
+function ModelIconModal({
   model,
-  onChange,
   language,
-  expanded,
-  onToggle,
+  onClose,
+  onSelect,
 }: {
   model: EditableModel;
-  onChange: (field: "displayName" | "icon" | "sortOrder", value: string | number | null) => void;
   language: "en" | "zh-CN";
-  expanded: boolean;
-  onToggle: () => void;
+  onClose: () => void;
+  onSelect: (icon: string | null) => void;
 }) {
   const copy = getAdminCopy(language);
-  const currentLabel = MODEL_ICON_OPTIONS.find((option) => option.value === (model.icon ?? "auto"))?.label ?? copy.auto;
 
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between gap-3">
-        <div className="text-[11px] font-mono uppercase tracking-wide text-textMuted">{copy.icon}</div>
-        <button
-          type="button"
-          onClick={onToggle}
-          className="glass-button inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-mono text-textSecondary"
-        >
-          <span>{expanded ? copy.hideIconOptions : copy.showIconOptions}</span>
-          {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-        </button>
-      </div>
+  if (typeof document === "undefined") {
+    return null;
+  }
 
-      <button
-        type="button"
-        onClick={onToggle}
-        className="glass-button flex w-full items-center justify-between gap-3 rounded-xl border border-border px-3 py-2 text-left"
-      >
-        <span className="flex items-center gap-3">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-surface/80">
-            <ModelIcon icon={model.icon} modelId={model.model} ownedBy={model.ownedBy} size={20} />
-          </span>
-          <span className="text-sm font-mono text-textPrimary">{(model.icon ?? "auto") === "auto" ? copy.auto : currentLabel}</span>
-        </span>
-        {expanded ? <ChevronUp size={16} className="text-textMuted" /> : <ChevronDown size={16} className="text-textMuted" />}
-      </button>
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4 py-6 backdrop-blur-sm">
+      <div className="glass-panel w-full max-w-4xl rounded-[28px] border border-border p-6 shadow-2xl shadow-black/20 md:p-8">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-2xl font-mono text-textPrimary">{copy.chooseIcon}</h3>
+            <p className="mt-2 text-sm text-textSecondary">{getModelLabel(model, copy)}</p>
+          </div>
+          <button type="button" onClick={onClose} className="glass-button rounded-xl p-2 text-textSecondary hover:text-textPrimary" aria-label="Close icon picker">
+            <X size={18} />
+          </button>
+        </div>
 
-      {expanded ? (
-        <div className="flex flex-wrap gap-2 rounded-2xl border border-border bg-background/50 p-3">
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {MODEL_ICON_OPTIONS.map((option) => {
             const isActive = (model.icon ?? "auto") === option.value;
+
             return (
               <button
                 key={option.value}
                 type="button"
-                onClick={() => onChange("icon", option.value === "auto" ? null : option.value)}
-                className={`glass-button inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-mono transition-all ${
-                  isActive ? "border-accent bg-accent text-textPrimary" : "border-border text-textSecondary"
+                onClick={() => {
+                  onSelect(option.value === "auto" ? null : option.value);
+                  onClose();
+                }}
+                className={`glass-button flex items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-all ${
+                  isActive ? "border-accent bg-accent text-textPrimary shadow-lg shadow-accent/10" : "border-border text-textSecondary"
                 }`}
               >
-                <span className="flex h-7 w-7 items-center justify-center rounded-md bg-surface/80">
-                  <ModelIcon icon={option.value === "auto" ? null : option.value} modelId={model.model} ownedBy={model.ownedBy} size={18} />
+                <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-background/80">
+                  <ModelIcon icon={option.value === "auto" ? null : option.value} modelId={model.model} ownedBy={model.ownedBy} size={24} />
                 </span>
-                <span>{option.value === "auto" ? copy.auto : option.label}</span>
+                <span className="min-w-0">
+                  <span className="block font-mono text-sm text-textPrimary">{option.value === "auto" ? copy.auto : option.label}</span>
+                  <span className="mt-1 block text-xs text-textMuted">{option.value === "auto" ? copy.chooseIcon : option.value}</span>
+                </span>
               </button>
             );
           })}
         </div>
-      ) : null}
-    </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
-function CompactEditor({
+function SortableModelRow({
   model,
   language,
-  onChange,
+  onDisplayNameChange,
+  onOpenIconPicker,
 }: {
   model: EditableModel;
   language: "en" | "zh-CN";
-  onChange: (field: "displayName" | "icon" | "sortOrder", value: string | number | null) => void;
+  onDisplayNameChange: (value: string) => void;
+  onOpenIconPicker: () => void;
 }) {
   const copy = getAdminCopy(language);
-  const [iconExpanded, setIconExpanded] = useState(false);
-  const statusLabel = (() => {
-    switch (model.latestStatus) {
-      case "up":
-        return copy.up;
-      case "degraded":
-        return copy.degraded;
-      case "down":
-        return copy.down;
-      default:
-        return copy.emptyStatus;
-    }
-  })();
+  const displayLabel = getModelLabel(model, copy);
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: model.model });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
 
   return (
-    <div className="min-w-0 flex-1 space-y-2">
-      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-        <div className="min-w-0 flex-1 space-y-1">
-          <div className="flex items-center gap-2">
-            <input
-              value={model.displayName ?? ""}
-              onChange={(event) => onChange("displayName", event.target.value)}
-              placeholder={copy.displayNamePlaceholder}
-              className="w-full rounded-lg border border-border bg-background/70 px-3 py-1.5 text-sm text-textPrimary outline-none transition-colors focus:border-accent"
-            />
-          </div>
-          <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono text-textMuted">
-            <span className="rounded-full border border-border px-2 py-1">{copy.modelId}: {model.model}</span>
-            <span className="rounded-full border border-border px-2 py-1">{copy.provider}: {model.ownedBy ?? "-"}</span>
-          </div>
-        </div>
+    <article
+      ref={setNodeRef}
+      style={style}
+      className={`rounded-xl border bg-surface/75 px-3 py-3 shadow-sm transition-shadow ${
+        isDragging ? "border-accent shadow-2xl shadow-accent/15" : "border-border"
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        <button
+          ref={setActivatorNodeRef}
+          type="button"
+          className="glass-button mt-0.5 cursor-grab rounded-lg p-1.5 text-textMuted active:cursor-grabbing"
+          aria-label={`Drag ${displayLabel}`}
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical size={15} />
+        </button>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div className={`rounded-full border px-2.5 py-1 text-[11px] font-mono ${getStatusTone(model.latestStatus)}`}>{statusLabel}</div>
-          <div className="rounded-full border border-border px-2.5 py-1 text-[11px] font-mono text-textMuted">{model.availabilityPercentage.toFixed(1)}%</div>
-          <label className="flex items-center gap-2 rounded-full border border-border px-2.5 py-1 text-[11px] font-mono text-textMuted">
-            <span>{copy.order}</span>
-            <input
-              type="number"
-              value={model.sortOrder}
-              onChange={(event) => onChange("sortOrder", Number(event.target.value))}
-              className="w-12 bg-transparent text-right text-textPrimary outline-none"
-            />
-          </label>
+        <button
+          type="button"
+          onClick={onOpenIconPicker}
+          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border border-border bg-background/80 transition-transform hover:scale-[1.03]"
+          aria-label={`${copy.chooseIcon}: ${displayLabel}`}
+        >
+          <ModelIcon icon={model.icon} modelId={model.model} ownedBy={model.ownedBy} size={22} />
+        </button>
+
+        <div className="min-w-0 flex-1 space-y-2">
+          <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+            <div className="min-w-0 flex-1 space-y-2">
+              <input
+                value={model.displayName ?? ""}
+                onChange={(event) => onDisplayNameChange(event.target.value)}
+                placeholder={copy.displayNamePlaceholder}
+                className="w-full rounded-lg border border-border bg-background/70 px-3 py-1.5 text-sm text-textPrimary outline-none transition-colors focus:border-accent"
+              />
+              <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono text-textMuted">
+                <span className="rounded-full border border-border px-2 py-1">{copy.modelId}: {model.model}</span>
+                <span className="rounded-full border border-border px-2 py-1">{copy.provider}: {model.ownedBy ?? "-"}</span>
+                <span className="rounded-full border border-border px-2 py-1">#{model.sortOrder}</span>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <div className={`rounded-full border px-2.5 py-1 text-[11px] font-mono ${getStatusTone(model.latestStatus)}`}>
+                {getStatusLabel(language, model.latestStatus)}
+              </div>
+              <div className="rounded-full border border-border px-2.5 py-1 text-[11px] font-mono text-textMuted">
+                {model.availabilityPercentage.toFixed(1)}%
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-
-      <IconPicker
-        model={model}
-        language={language}
-        expanded={iconExpanded}
-        onToggle={() => setIconExpanded((current) => !current)}
-        onChange={onChange}
-      />
-    </div>
+    </article>
   );
 }
 
@@ -187,13 +233,19 @@ export function ModelManagerSection({
   models: EditableModel[];
   isSaving: boolean;
   onChange: (upstreamId: string, modelId: string, field: "displayName" | "icon" | "sortOrder", value: string | number | null) => void;
-  onReorder: (upstreamId: string, draggedModelId: string, targetModelId: string | null) => void;
+  onReorder: (upstreamId: string, orderedModelIds: string[]) => void;
   onSave: () => void;
   language: "en" | "zh-CN";
 }) {
   const copy = getAdminCopy(language);
-  const [dragState, setDragState] = useState<DragState | null>(null);
-  const [dropTargetKey, setDropTargetKey] = useState<string | null>(null);
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [iconTarget, setIconTarget] = useState<EditableModel | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
   const groupedModels = useMemo(() => {
     const groups = new Map<string, Map<string, EditableModel[]>>();
 
@@ -223,19 +275,36 @@ export function ModelManagerSection({
         groupName,
         upstreams: Array.from(upstreams.entries())
           .sort((left, right) => left[0].localeCompare(right[0]))
-          .map(([upstreamName, groupModels]) => ({
+          .map(([upstreamName, grouped]) => ({
             upstreamName,
-            models: sortModels(groupModels),
+            upstreamId: grouped[0]?.upstreamId ?? "",
+            models: sortModels(grouped),
           })),
       }));
   }, [models]);
 
-  const allowDrop = (upstreamId: string, targetModelId: string | null) => {
-    if (!dragState || dragState.upstreamId !== upstreamId) {
-      return false;
+  const activeDragModel = useMemo(() => models.find((model) => model.model === activeDragId) ?? null, [activeDragId, models]);
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveDragId(String(event.active.id));
+  };
+
+  const handleDragEnd = (upstreamId: string, orderedModels: EditableModel[]) => (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveDragId(null);
+
+    if (!over || active.id === over.id) {
+      return;
     }
 
-    return dragState.modelId !== targetModelId;
+    const oldIndex = orderedModels.findIndex((model) => model.model === active.id);
+    const newIndex = orderedModels.findIndex((model) => model.model === over.id);
+    if (oldIndex < 0 || newIndex < 0) {
+      return;
+    }
+
+    const reordered = arrayMove(orderedModels, oldIndex, newIndex);
+    onReorder(upstreamId, reordered.map((model) => model.model));
   };
 
   return (
@@ -280,96 +349,40 @@ export function ModelManagerSection({
                       </div>
                     </div>
 
-                    <div className="space-y-3">
-                      {upstream.models.map((model) => {
-                        const cardKey = `${model.upstreamId}:${model.model}`;
-                        const isDropTarget = dropTargetKey === cardKey;
+                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd(upstream.upstreamId, upstream.models)}>
+                      <SortableContext items={upstream.models.map((model) => model.model)} strategy={verticalListSortingStrategy}>
+                        <div className="space-y-2">
+                          {upstream.models.map((model) => (
+                            <SortableModelRow
+                              key={`${model.upstreamId}:${model.model}`}
+                              model={model}
+                              language={language}
+                              onDisplayNameChange={(value) => onChange(model.upstreamId, model.model, "displayName", value)}
+                              onOpenIconPicker={() => setIconTarget(model)}
+                            />
+                          ))}
+                        </div>
+                      </SortableContext>
 
-                        return (
-                          <article
-                            key={cardKey}
-                            onDragOver={(event) => {
-                              if (!allowDrop(model.upstreamId, model.model)) {
-                                return;
-                              }
-
-                              event.preventDefault();
-                              setDropTargetKey(cardKey);
-                            }}
-                            onDrop={(event) => {
-                              if (!allowDrop(model.upstreamId, model.model) || !dragState) {
-                                return;
-                              }
-
-                              event.preventDefault();
-                              onReorder(model.upstreamId, dragState.modelId, model.model);
-                              setDragState(null);
-                              setDropTargetKey(null);
-                            }}
-                            className={`rounded-xl border bg-surface/70 p-3 transition-all ${
-                              isDropTarget ? "border-accent shadow-lg shadow-accent/10" : "border-border"
-                            }`}
-                          >
-                            <div className="flex min-w-0 items-start gap-3">
-                              <div className="flex items-start pt-0.5">
-                                  <div
-                                    draggable
-                                    onDragStart={() => {
-                                      setDragState({ upstreamId: model.upstreamId, modelId: model.model });
-                                      setDropTargetKey(cardKey);
-                                    }}
-                                    onDragEnd={() => {
-                                      setDragState(null);
-                                      setDropTargetKey(null);
-                                    }}
-                                    className="glass-button cursor-grab rounded-lg p-1.5 text-textMuted active:cursor-grabbing"
-                                  >
-                                    <GripVertical size={15} />
-                                  </div>
+                      <DragOverlay dropAnimation={{ duration: 220, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" }}>
+                        {activeDragModel ? (
+                          <div className="rounded-xl border border-accent bg-surface/95 px-3 py-3 shadow-2xl shadow-accent/15">
+                            <div className="flex items-center gap-3">
+                              <div className="glass-button rounded-lg p-1.5 text-textMuted">
+                                <GripVertical size={15} />
                               </div>
-
-                              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border border-border bg-background/80">
-                                <ModelIcon icon={model.icon} modelId={model.model} ownedBy={model.ownedBy} size={24} />
+                              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background/80">
+                                <ModelIcon icon={activeDragModel.icon} modelId={activeDragModel.model} ownedBy={activeDragModel.ownedBy} size={22} />
                               </div>
-
-                              <CompactEditor
-                                model={model}
-                                language={language}
-                                onChange={(field, value) => onChange(model.upstreamId, model.model, field, value)}
-                              />
+                              <div className="min-w-0">
+                                <div className="text-sm font-mono text-textPrimary">{getModelLabel(activeDragModel, copy)}</div>
+                                <div className="mt-1 text-[11px] font-mono text-textMuted">{activeDragModel.model}</div>
+                              </div>
                             </div>
-                          </article>
-                        );
-                      })}
-
-                      <div
-                        onDragOver={(event) => {
-                          if (!allowDrop(upstream.models[0]?.upstreamId ?? "", null)) {
-                            return;
-                          }
-
-                          event.preventDefault();
-                          setDropTargetKey(`${upstream.models[0]?.upstreamId ?? upstream.upstreamName}:tail`);
-                        }}
-                        onDrop={(event) => {
-                          if (!dragState || dragState.upstreamId !== upstream.models[0]?.upstreamId) {
-                            return;
-                          }
-
-                          event.preventDefault();
-                          onReorder(dragState.upstreamId, dragState.modelId, null);
-                          setDragState(null);
-                          setDropTargetKey(null);
-                        }}
-                        className={`rounded-2xl border border-dashed px-4 py-3 text-xs font-mono text-textMuted transition-colors ${
-                          dropTargetKey === `${upstream.models[0]?.upstreamId ?? upstream.upstreamName}:tail`
-                            ? "border-accent bg-accent/10 text-textPrimary"
-                            : "border-border bg-surface/30"
-                        }`}
-                      >
-                        {copy.dropHint}
-                      </div>
-                    </div>
+                          </div>
+                        ) : null}
+                      </DragOverlay>
+                    </DndContext>
                   </div>
                 ))}
               </div>
@@ -377,6 +390,15 @@ export function ModelManagerSection({
           ))}
         </div>
       )}
+
+      {iconTarget ? (
+        <ModelIconModal
+          model={iconTarget}
+          language={language}
+          onClose={() => setIconTarget(null)}
+          onSelect={(icon) => onChange(iconTarget.upstreamId, iconTarget.model, "icon", icon)}
+        />
+      ) : null}
     </section>
   );
 }

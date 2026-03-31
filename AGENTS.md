@@ -56,6 +56,9 @@ Detailed package-level guides are available in their respective directories.
 - Test files (`.test.ts`) are colocated with the source code.
 - No ESLint or Prettier configs are present. Follow the existing code style.
 
+### Workflow
+- Completed implementation rounds should end with a git commit that cleanly captures the delivered change.
+
 ## ANTI-PATTERNS
 - Do not hardcode undeletable upstreams.
 - Do not put runtime upstream or API settings back into `.env`.

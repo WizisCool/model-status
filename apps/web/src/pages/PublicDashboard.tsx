@@ -410,49 +410,58 @@ export function PublicDashboard() {
 
   return (
     <div className="min-h-screen p-6 md:p-10 max-w-7xl mx-auto font-sans flex flex-col">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
-        <div>
-          <h1 className="text-3xl font-mono font-medium tracking-tight text-textPrimary flex items-center gap-3">
-            <Activity className="text-success" />
-            {data?.siteTitle || copy.title}
-          </h1>
-          <p className="text-textSecondary mt-2 text-sm">{data?.siteSubtitle || copy.subtitle}</p>
-          <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 text-xs font-mono text-textSecondary shadow-sm">
-            <Indicator tone={data ? (modelAvailability.error === 0 ? "up" : modelAvailability.available >= Math.max(1, Math.ceil(data.summary.totalModels * 0.7)) ? "degraded" : "down") : "empty"} />
-            {countdownLabel}
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex bg-surface border border-border p-1 rounded-md shadow-sm">
-            {(["90m", "24h", "7d", "30d"] as DashboardRange[]).map((value) => (
-              <button key={value} type="button" onClick={() => setRange(value)} className={`px-4 py-1.5 text-sm font-mono rounded-sm transition-colors ${range === value ? "bg-accent text-textPrimary shadow-sm" : "text-textSecondary hover:text-textPrimary hover:bg-surfaceHover"}`}>
-                {value}
-              </button>
-            ))}
+      <header className="mb-12">
+        <div className="relative overflow-hidden rounded-[32px] border border-border bg-gradient-to-br from-surface via-surface to-accent/35 p-6 shadow-2xl shadow-black/10 md:p-8">
+          <div className="pointer-events-none absolute inset-0 opacity-60">
+            <div className="absolute -right-16 top-0 h-40 w-40 rounded-full bg-success/10 blur-3xl" />
+            <div className="absolute left-0 top-24 h-48 w-48 rounded-full bg-accent/20 blur-3xl" />
           </div>
 
-          <div className="flex bg-surface border border-border p-1 rounded-md shadow-sm">
-            <button type="button" onClick={() => setViewMode("grid")} className={`p-1.5 rounded-sm transition-colors ${viewMode === "grid" ? "bg-accent text-textPrimary" : "text-textSecondary hover:text-textPrimary hover:bg-surfaceHover"}`}>
-              <LayoutGrid size={16} />
-            </button>
-            <button type="button" onClick={() => setViewMode("list")} className={`p-1.5 rounded-sm transition-colors ${viewMode === "list" ? "bg-accent text-textPrimary" : "text-textSecondary hover:text-textPrimary hover:bg-surfaceHover"}`}>
-              <List size={16} />
-            </button>
-          </div>
+          <div className="relative flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h1 className="text-3xl font-mono font-medium tracking-tight text-textPrimary flex items-center gap-3">
+                <Activity className="text-success" />
+                {data?.siteTitle || copy.title}
+              </h1>
+              <p className="text-textSecondary mt-2 text-sm">{data?.siteSubtitle || copy.subtitle}</p>
+              <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-border bg-background/70 px-3 py-1 text-xs font-mono text-textSecondary shadow-sm">
+                <Indicator tone={data ? (modelAvailability.error === 0 ? "up" : modelAvailability.available >= Math.max(1, Math.ceil(data.summary.totalModels * 0.7)) ? "degraded" : "down") : "empty"} />
+                {countdownLabel}
+              </div>
+            </div>
 
-          <div className="flex items-center gap-2">
-            {isAdmin && (
-              <a href="/admin" className="glass-button p-2 rounded-md text-textSecondary hover:text-textPrimary text-sm font-mono flex items-center h-8" title={copy.adminDashboard}>
-                {copy.admin}
-              </a>
-            )}
-            <button type="button" onClick={toggleLanguage} className="glass-button p-2 rounded-md text-textSecondary hover:text-textPrimary h-8 flex items-center" title={copy.toggleLanguage}>
-              <Languages size={16} />
-            </button>
-            <button type="button" onClick={toggleTheme} className="glass-button p-2 rounded-md text-textSecondary hover:text-textPrimary h-8 flex items-center" title={copy.toggleTheme}>
-              {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
-            </button>
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex bg-surface border border-border p-1 rounded-md shadow-sm">
+                {(["90m", "24h", "7d", "30d"] as DashboardRange[]).map((value) => (
+                  <button key={value} type="button" onClick={() => setRange(value)} className={`px-4 py-1.5 text-sm font-mono rounded-sm transition-colors ${range === value ? "bg-accent text-textPrimary shadow-sm" : "text-textSecondary hover:text-textPrimary hover:bg-surfaceHover"}`}>
+                    {value}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex bg-surface border border-border p-1 rounded-md shadow-sm">
+                <button type="button" onClick={() => setViewMode("grid")} className={`p-1.5 rounded-sm transition-colors ${viewMode === "grid" ? "bg-accent text-textPrimary" : "text-textSecondary hover:text-textPrimary hover:bg-surfaceHover"}`}>
+                  <LayoutGrid size={16} />
+                </button>
+                <button type="button" onClick={() => setViewMode("list")} className={`p-1.5 rounded-sm transition-colors ${viewMode === "list" ? "bg-accent text-textPrimary" : "text-textSecondary hover:text-textPrimary hover:bg-surfaceHover"}`}>
+                  <List size={16} />
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {isAdmin && (
+                  <a href="/admin" className="glass-button p-2 rounded-md text-textSecondary hover:text-textPrimary text-sm font-mono flex items-center h-8" title={copy.adminDashboard}>
+                    {copy.admin}
+                  </a>
+                )}
+                <button type="button" onClick={toggleLanguage} className="glass-button p-2 rounded-md text-textSecondary hover:text-textPrimary h-8 flex items-center" title={copy.toggleLanguage}>
+                  <Languages size={16} />
+                </button>
+                <button type="button" onClick={toggleTheme} className="glass-button p-2 rounded-md text-textSecondary hover:text-textPrimary h-8 flex items-center" title={copy.toggleTheme}>
+                  {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </header>

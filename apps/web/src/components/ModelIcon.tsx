@@ -156,6 +156,18 @@ export function ModelIcon({
     );
   }
 
+  if (resolvedKey === "codex") {
+    const darkTheme = isDarkThemeActive();
+    return (
+      <CodexAvatar
+        size={size}
+        className={className}
+        background={darkTheme ? "#ffffff" : "#111827"}
+        color={darkTheme ? "#111827" : "#ffffff"}
+      />
+    );
+  }
+
   const IconComponent = MODEL_ICON_COMPONENTS[resolvedKey];
   return <IconComponent size={size} className={className} />;
 }

@@ -72,6 +72,7 @@ export function createScheduler(config: AppConfig, db: DbClient): Scheduler {
     }
 
     syncRunning = true;
+    const cycleStartedAtMs = Date.now();
     try {
       await syncModelCatalog(getRuntimeSettings(db, config), db);
     } catch (error) {
@@ -79,7 +80,8 @@ export function createScheduler(config: AppConfig, db: DbClient): Scheduler {
     } finally {
       syncRunning = false;
       if (scheduleNext) {
-        scheduleSync();
+        const runtime = getRuntimeSettings(db, config);
+        scheduleSync(Math.max(0, cycleStartedAtMs + runtime.catalogSyncIntervalMs - Date.now()));
       }
     }
   }
@@ -93,6 +95,7 @@ export function createScheduler(config: AppConfig, db: DbClient): Scheduler {
     }
 
     probeRunning = true;
+    const cycleStartedAtMs = Date.now();
     try {
       await probeAllModels(getRuntimeSettings(db, config), db);
     } catch (error) {
@@ -100,7 +103,8 @@ export function createScheduler(config: AppConfig, db: DbClient): Scheduler {
     } finally {
       probeRunning = false;
       if (scheduleNext) {
-        scheduleProbe();
+        const runtime = getRuntimeSettings(db, config);
+        scheduleProbe(Math.max(0, cycleStartedAtMs + runtime.probeIntervalMs - Date.now()));
       }
     }
   }
@@ -109,11 +113,12 @@ export function createScheduler(config: AppConfig, db: DbClient): Scheduler {
     async start() {
       stopped = false;
       const runtime = getRuntimeSettings(db, config);
-      nextProbeAt = new Date(Date.now() + runtime.probeIntervalMs).toISOString();
+      const initialProbeDueAtMs = Date.now() + runtime.probeIntervalMs;
+      nextProbeAt = new Date(initialProbeDueAtMs).toISOString();
       await safeSync(false);
       await safeProbe(false);
       scheduleSync();
-      scheduleProbe();
+      scheduleProbe(Math.max(0, initialProbeDueAtMs - Date.now()));
     },
     stop() {
       stopped = true;

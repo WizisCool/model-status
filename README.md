@@ -1,81 +1,82 @@
 <div align="center">
-  <img src="apps/web/public/project-icon.svg" width="88" alt="Model Status icon" />
+  <img src="apps/web/public/project-icon.svg" width="88" alt="Model Status 图标" />
   <h1>Model Status</h1>
-  <p><strong>Local-first monitoring for OpenAI-compatible model APIs.</strong></p>
+  <p><strong>一个面向 OpenAI 兼容模型接口的本地优先监控面板。</strong></p>
   <p>
-    A public read-only status dashboard, a private admin workspace, SQLite-backed history,
-    configurable retries, and a single-process production deployment model.
+    公开只读状态页，后台管理控制台，SQLite 持久化历史，可配置重试策略，
+    并支持单进程或 Docker 部署。
   </p>
   <p>
-    <a href="#quick-start">Quick Start</a> ·
-    <a href="#docker">Docker</a> ·
-    <a href="#configuration">Configuration</a> ·
-    <a href="#architecture">Architecture</a>
+    <a href="#功能特性">功能特性</a> ·
+    <a href="#快速开始">快速开始</a> ·
+    <a href="#docker-部署">Docker 部署</a> ·
+    <a href="#架构说明">架构说明</a>
   </p>
   <p>
     <a href="https://github.com/WizisCool/model-status/actions/workflows/docker-image.yml">
-      <img src="https://github.com/WizisCool/model-status/actions/workflows/docker-image.yml/badge.svg" alt="Docker image workflow" />
+      <img src="https://github.com/WizisCool/model-status/actions/workflows/docker-image.yml/badge.svg" alt="Docker 镜像工作流" />
     </a>
   </p>
 </div>
 
-## Overview
+## 项目简介
 
-Model Status is a local-first monitoring panel for model APIs that expose an OpenAI-compatible interface.
+Model Status 用于监控 OpenAI 兼容模型接口的真实可用性，而不是只检查服务端口是否在线。
 
-It continuously:
+它会按计划执行真实探测请求，记录：
 
-- syncs model catalogs from configured upstreams
-- runs real probe requests against each visible model
-- records connectivity, first-token, and total latency in SQLite
-- calculates dashboard availability from final visible status outcomes
-- serves both the API and the built frontend from one process in production
+- 连通延迟
+- 首字延时
+- 总耗时
+- 最终探测状态
+- 历史成功率
 
-The public `/` dashboard is read-only. The private `/admin` workspace manages upstreams, settings, scheduling, visibility, ordering, and on-demand actions.
+所有运行时设置和历史数据都保存在本地 SQLite 中。公开首页 `/` 只提供只读监控视图，后台 `/admin` 用于管理上游、调度、重试、模型展示与系统设置。
 
-## Highlights
+## 功能特性
 
-- Local-first by default. No cloud telemetry is required.
-- SQLite is the single source of truth for settings and monitoring history.
-- Public dashboard supports fixed ranges: `90m`, `24h`, `7d`, `30d`.
-- Admin settings control probe interval, timeout, concurrency, retry counts, score thresholds, and branding text.
-- Retry logic is configurable for both degraded results and hard failures.
-- Public availability is based on the final visible status outcome, matching the frontend status indicators.
-- Frontend supports persisted preferences for range, view mode, language, and theme.
-- Production mode can run as a single container that serves both API and frontend assets.
+- 本地优先，不依赖云端监控平台
+- 支持从多个上游同步模型目录
+- 基于真实流式请求执行探测，而不是伪健康检查
+- 支持 `90m`、`24h`、`7d`、`30d` 四个固定时间维度
+- 支持列表 / 卡片两种前台展示模式
+- 支持后台调整探测间隔、超时、并发、阈值与重试次数
+- 支持针对失败和降级结果分别配置重试次数
+- 成功率计算与前端最终状态展示保持一致
+- SQLite 作为运行时单一数据源
+- 生产环境可由 API 进程直接托管前端构建产物
+- 已提供 Dockerfile 与 GitHub Actions 自动构建镜像工作流
 
-## Screens and Behavior
+## 使用场景
 
-- `GET /`
-  Public monitoring dashboard for operators, customers, or teammates.
-- `GET /admin`
-  Authenticated control panel for upstream management and runtime settings.
-- `GET /api/dashboard`
-  Public read-only dashboard data.
-- `GET /api/admin/*`
-  Authenticated administration APIs.
+- 自建 AI 网关 / 路由服务可用性监控
+- 多模型上游质量对比
+- 对外公开状态页
+- 团队内部模型接入验收
+- 本地或私有环境中的轻量监控面板
 
-## Tech Stack
+## 技术栈
 
 - Node.js 24+
 - npm `11.10.1`
-- TypeScript (strict mode)
-- Native Node HTTP server
+- TypeScript
+- 原生 Node HTTP 服务
 - React 19 + Vite
 - Tailwind CSS
 - SQLite
 - Vitest
-- GitHub Actions + GHCR for Docker image publishing
+- GitHub Actions
+- GHCR
 
-## Quick Start
+## 快速开始
 
-### 1. Install dependencies
+### 1. 安装依赖
 
 ```bash
 npm install
 ```
 
-### 2. Create your local environment file
+### 2. 创建环境文件
 
 ```bash
 cp .env.example .env
@@ -87,9 +88,10 @@ Windows PowerShell:
 Copy-Item .env.example .env
 ```
 
-### 3. Set bootstrap values
+### 3. 配置启动参数
 
-These values are bootstrap-only. Runtime settings such as upstreams, intervals, thresholds, and retry counts are managed in the admin UI and stored in SQLite.
+这些变量只用于启动阶段。  
+运行中的上游、探测参数、阈值和重试策略应在后台中配置，并持久化到 SQLite。
 
 ```env
 PORT=3000
@@ -101,37 +103,37 @@ ADMIN_BOOTSTRAP_PASSWORD=change-me
 SESSION_SECRET=replace-this-in-production
 ```
 
-### 4. Start in development
+### 4. 开发模式启动
 
 ```bash
 npm run dev
 ```
 
-Default local URLs:
+默认地址：
 
 - API: `http://localhost:3000`
 - Web: `http://localhost:5173`
 
-### 5. Build for production
+### 5. 生产构建与启动
 
 ```bash
 npm run build
 npm run start
 ```
 
-When `apps/web/dist` exists, the API process serves the frontend directly.
+当 `apps/web/dist` 存在时，API 服务会直接托管前端静态资源，因此生产模式只需要一个进程。
 
-## Docker
+## Docker 部署
 
-This repository includes a production Dockerfile and a GitHub Actions workflow that builds and publishes images to GHCR.
+仓库已内置生产 Dockerfile。
 
-### Build locally
+### 本地构建镜像
 
 ```bash
 docker build -t model-status:local .
 ```
 
-### Run locally
+### 本地运行容器
 
 ```bash
 docker run --rm -p 3000:3000 \
@@ -141,46 +143,45 @@ docker run --rm -p 3000:3000 \
   model-status:local
 ```
 
-### Pull from GHCR
+### 从 GHCR 拉取
 
 ```bash
 docker pull ghcr.io/wiziscool/model-status:latest
 ```
 
-## Configuration
+## 配置说明
 
-### Bootstrap-only environment variables
+### 启动期环境变量
 
-These are read from `.env` / `.env.local` on startup:
-
-| Variable | Purpose | Default |
+| 变量名 | 用途 | 默认值 |
 |---|---|---|
-| `HOST` | Server bind host | `0.0.0.0` |
-| `PORT` | Server port | `3000` |
-| `WEB_ORIGIN` | Allowed admin origin | `http://localhost:5173` |
-| `DATABASE_FILE` | SQLite database path | `./data/model-status.db` |
-| `ADMIN_BOOTSTRAP_USERNAME` | Initial admin username | `admin` |
-| `ADMIN_BOOTSTRAP_PASSWORD` | Initial admin password | empty |
-| `SESSION_SECRET` | Session signing secret | empty |
+| `HOST` | 服务监听地址 | `0.0.0.0` |
+| `PORT` | 服务端口 | `3000` |
+| `WEB_ORIGIN` | 后台允许来源 | `http://localhost:5173` |
+| `DATABASE_FILE` | SQLite 文件路径 | `./data/model-status.db` |
+| `ADMIN_BOOTSTRAP_USERNAME` | 初始管理员用户名 | `admin` |
+| `ADMIN_BOOTSTRAP_PASSWORD` | 初始管理员密码 | 空 |
+| `SESSION_SECRET` | Session 签名密钥 | 空 |
 
-### Runtime-managed settings
+### 运行期后台配置
 
-These are stored in SQLite and edited from `/admin`:
+这些配置存储在 SQLite 中，通过 `/admin` 管理：
 
-- site title and subtitle
-- summary card visibility
-- probe interval
-- catalog sync interval
-- probe timeout
-- probe concurrency
-- max tokens
-- temperature
-- degraded retry attempts
-- failed retry attempts
-- score thresholds
-- upstream definitions and API keys
+- 站点标题与副标题
+- 概览卡片显示开关
+- 探测间隔
+- 模型同步间隔
+- 请求超时
+- 探测并发数
+- 最大 token 数
+- 温度参数
+- 失败重试次数
+- 降级重试次数
+- 成功 / 降级阈值
+- 上游地址与 API Key
+- 模型显示名称、图标、顺序与可见性
 
-## Verification
+## 验证命令
 
 ```bash
 npm run test
@@ -188,45 +189,34 @@ npm run typecheck
 npm run build
 ```
 
-## Architecture
+## 目录结构
 
 ```text
-apps/api      HTTP server, auth, scheduler, probes, persistence, frontend hosting
-apps/web      Public dashboard + admin workspace
-packages/shared  Shared DTOs, ranges, repository constants
-data/         Local SQLite database files
+apps/api         后端服务、鉴权、调度、探测、数据聚合、静态托管
+apps/web         前台监控页与后台控制台
+packages/shared  前后端共享类型与常量
+data/            本地 SQLite 数据文件
 ```
 
-Production flow:
+## 架构说明
 
-1. The API boots with bootstrap env values.
-2. SQLite runtime settings are loaded or initialized.
-3. The scheduler runs model sync and probe cycles in-process.
-4. Probe results are persisted.
-5. The public and admin dashboards read aggregated data from SQLite.
-6. In production, the API serves the built frontend from `apps/web/dist`.
+运行流程大致如下：
 
-## Repository Policy
+1. API 读取启动环境变量并初始化数据库
+2. 系统从 SQLite 载入运行时设置
+3. 调度器按固定节拍执行模型同步与探测
+4. 探测结果写入 SQLite 历史表
+5. 前台与后台基于聚合后的数据渲染状态页
+6. 生产环境由 API 进程直接提供前端构建文件
 
-This repository intentionally does not include local operator files or assistant-specific workspace data.
+## 公开接口
 
-Ignored / excluded from public version control:
-
-- `.codex/`
-- all `AGENTS.md`
-- local `.env*`
-- SQLite database files under `data/`
-- local helper script `check-db-status.ts`
-- cookies, temp files, and local build artifacts
-
-## API Surface
-
-### Public
+### 前台公开接口
 
 - `GET /api/health`
 - `GET /api/dashboard?range=90m|24h|7d|30d`
 
-### Admin
+### 后台管理接口
 
 - `GET /api/admin/session`
 - `POST /api/admin/login`
@@ -238,6 +228,17 @@ Ignored / excluded from public version control:
 - `POST /api/admin/actions/sync-models`
 - `POST /api/admin/actions/run-probes`
 
-## License
+## 发布说明
 
-Add your preferred license before making the repository broadly public.
+为了保持公开仓库整洁，以下内容不会进入版本控制：
+
+- `.codex/`
+- 所有 `AGENTS.md`
+- 本地 `.env*`
+- `data/` 下数据库文件
+- 本地辅助脚本与临时文件
+- Cookie、缓存、构建产物
+
+## 许可证
+
+仓库公开发布前，建议补充正式 `LICENSE` 文件。

@@ -74,12 +74,70 @@ function classifyBucket(score: number | null, config: DashboardScoreConfig): "up
   return "down";
 }
 
+function buildProbeSample(probe: ProbeRecord, config: DashboardMetaConfig) {
+  const score = scoreProbe(probe);
+
+  return {
+    id: `${probe.upstreamId}:${probe.model}:${probe.startedAt}`,
+    startedAt: probe.startedAt,
+    endedAt: probe.completedAt,
+    score,
+    level: classifyBucket(score, config),
+    probeCount: 1,
+    successCount: isSuccessfulProbe(probe, config) ? 1 : 0,
+    avgConnectivityLatencyMs: probe.connectivityLatencyMs,
+    avgTotalLatencyMs: probe.totalLatencyMs,
+  };
+}
+
+function buildEmptySample(id: string, startedAt: string, endedAt: string) {
+  return {
+    id,
+    startedAt,
+    endedAt,
+    score: null,
+    level: "empty" as const,
+    probeCount: 0,
+    successCount: 0,
+    avgConnectivityLatencyMs: null,
+    avgTotalLatencyMs: null,
+  };
+}
+
 function buildRecentStatuses(range: DashboardRange, probes: ProbeRecord[], toDate: Date, config: DashboardMetaConfig) {
   const fromMs = Date.parse(rangeStartIso(range, toDate));
   const toMs = toDate.getTime();
   const bucketCount = range === "90m"
     ? Math.max(1, Math.min(RANGE_BUCKET_COUNT[range], Math.ceil((90 * 60 * 1000) / config.probeIntervalMs)))
     : RANGE_BUCKET_COUNT[range];
+
+  if (range === "90m") {
+    const sortedProbes = [...probes]
+      .filter((probe) => {
+        const probeMs = Date.parse(probe.startedAt);
+        return probeMs >= fromMs && probeMs <= toMs;
+      })
+      .sort((left, right) => left.startedAt.localeCompare(right.startedAt));
+    const recentProbeSamples = sortedProbes.slice(-bucketCount).map((probe) => buildProbeSample(probe, config));
+
+    if (recentProbeSamples.length >= bucketCount) {
+      return recentProbeSamples;
+    }
+
+    const missingCount = bucketCount - recentProbeSamples.length;
+    const padding = Array.from({ length: missingCount }, (_, index) => {
+      const bucketStartMs = fromMs + index * config.probeIntervalMs;
+      const bucketEndMs = Math.min(bucketStartMs + config.probeIntervalMs, toMs);
+      return buildEmptySample(
+        `${range}-empty-${bucketStartMs}`,
+        new Date(bucketStartMs).toISOString(),
+        new Date(bucketEndMs).toISOString(),
+      );
+    });
+
+    return [...padding, ...recentProbeSamples];
+  }
+
   const bucketMs = Math.max(1, Math.floor((toMs - fromMs) / bucketCount));
 
   return Array.from({ length: bucketCount }, (_, index) => {

@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 import ClaudeAvatar from "@lobehub/icons/es/Claude/components/Avatar";
-import CodexAvatar from "@lobehub/icons/es/Codex/components/Avatar";
+import CodexMono from "@lobehub/icons/es/Codex/components/Mono";
 import DeepSeekAvatar from "@lobehub/icons/es/DeepSeek/components/Avatar";
 import GeminiAvatar from "@lobehub/icons/es/Gemini/components/Avatar";
 import GroqAvatar from "@lobehub/icons/es/Groq/components/Avatar";
@@ -53,8 +53,7 @@ export const MODEL_ICON_OPTIONS: Array<{ value: ModelIconKey; label: string }> =
   { value: "openrouter", label: "OpenRouter" },
 ];
 
-const MODEL_ICON_COMPONENTS: Record<Exclude<ModelIconKey, "auto" | "openai">, IconComponent> = {
-  codex: CodexAvatar,
+const MODEL_ICON_COMPONENTS: Record<Exclude<ModelIconKey, "auto" | "openai" | "codex">, IconComponent> = {
   claude: ClaudeAvatar,
   gemini: GeminiAvatar,
   vertexai: VertexAIAvatar,
@@ -158,14 +157,7 @@ export function ModelIcon({
 
   if (resolvedKey === "codex") {
     const darkTheme = isDarkThemeActive();
-    return (
-      <CodexAvatar
-        size={size}
-        className={className}
-        background={darkTheme ? "#ffffff" : "#111827"}
-        color={darkTheme ? "#111827" : "#ffffff"}
-      />
-    );
+    return <CodexMono size={size} className={darkTheme ? className : `${className ?? ""} text-slate-900`.trim()} />;
   }
 
   const IconComponent = MODEL_ICON_COMPONENTS[resolvedKey];

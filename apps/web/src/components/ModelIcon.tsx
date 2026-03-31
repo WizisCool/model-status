@@ -108,6 +108,14 @@ function resolveOpenAIAvatarType(modelId: string): OpenAIAvatarType {
   return "normal";
 }
 
+function isDarkThemeActive(): boolean {
+  if (typeof document === "undefined") {
+    return false;
+  }
+
+  return document.documentElement.classList.contains("dark");
+}
+
 export function resolveModelIconKey(icon: string | null | undefined, modelId: string, ownedBy: string | null): Exclude<ModelIconKey, "auto"> | null {
   const normalized = normalizeIconKey(icon);
   if (normalized && normalized !== "auto") {
@@ -136,7 +144,16 @@ export function ModelIcon({
   }
 
   if (resolvedKey === "openai") {
-    return <OpenAIAvatar size={size} className={className} type={resolveOpenAIAvatarType(modelId)} />;
+    const darkTheme = isDarkThemeActive();
+    return (
+      <OpenAIAvatar
+        size={size}
+        className={className}
+        type={resolveOpenAIAvatarType(modelId)}
+        background={darkTheme ? "#ffffff" : "#000000"}
+        color={darkTheme ? "#000000" : "#ffffff"}
+      />
+    );
   }
 
   const IconComponent = MODEL_ICON_COMPONENTS[resolvedKey];

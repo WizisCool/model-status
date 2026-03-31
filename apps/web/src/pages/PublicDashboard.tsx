@@ -212,9 +212,8 @@ function ModelCard({ model, range, copy, language, isProbeCycleRunning }: { mode
 
       <div className="flex justify-between items-start mb-6 gap-4">
         <div className="min-w-0 pr-4">
-          <h3 className="font-mono font-medium text-lg truncate text-textPrimary flex items-center gap-2" title={displayLabel}>
+          <h3 className="font-display font-medium text-[1.32rem] truncate text-textPrimary flex items-center gap-2 leading-tight" title={displayLabel}>
             <ModelIcon icon={model.icon} modelId={model.model} ownedBy={model.ownedBy} size={18} className="text-textPrimary" />
-            <Indicator tone={model.latestStatus} />
             <span className="truncate">{displayLabel}</span>
           </h3>
           {showModelId ? <div className="mt-1 truncate font-mono text-xs text-textMuted">{model.model}</div> : null}
@@ -255,9 +254,12 @@ function ModelCard({ model, range, copy, language, isProbeCycleRunning }: { mode
         </div>
       </div>
 
-      <div className="flex items-center gap-2 text-xs text-textMuted font-mono mt-auto pt-4 border-t border-border opacity-80">
-        <Clock size={12} />
-        {`${copy.lastProbe}: ${formatDateTime(model.lastProbeAt, language, { hour: "2-digit", minute: "2-digit", second: "2-digit" }, copy)}`}
+      <div className="mt-auto flex items-center justify-between gap-3 border-t border-border pt-4 text-xs font-mono text-textMuted opacity-80">
+        <div className="flex items-center gap-2 min-w-0">
+          <Clock size={12} />
+          <span className="truncate">{`${copy.lastProbe}: ${formatDateTime(model.lastProbeAt, language, { hour: "2-digit", minute: "2-digit", second: "2-digit" }, copy)}`}</span>
+        </div>
+        <Indicator tone={model.latestStatus} />
       </div>
     </div>
   );
@@ -274,9 +276,8 @@ function ModelRow({ model, range, copy, language, isProbeCycleRunning }: { model
       <td className="px-6 py-4 font-mono font-medium text-textPrimary">
         <div className="flex items-center gap-3">
           <ModelIcon icon={model.icon} modelId={model.model} ownedBy={model.ownedBy} size={18} className="text-textPrimary" />
-          <Indicator tone={model.latestStatus} />
           <div className="min-w-0">
-            <span className="truncate max-w-xs block" title={displayLabel}>{displayLabel}</span>
+            <span className="font-display truncate max-w-xs block text-base leading-tight" title={displayLabel}>{displayLabel}</span>
             {showModelId ? <span className="mt-1 block truncate text-xs text-textMuted">{model.model}</span> : null}
           </div>
         </div>
@@ -292,7 +293,12 @@ function ModelRow({ model, range, copy, language, isProbeCycleRunning }: { model
       <td className="px-6 py-4 text-textPrimary">{model.avgConnectivityLatencyMs ? `${Math.round(model.avgConnectivityLatencyMs)}ms` : "—"}</td>
       <td className="px-6 py-4 text-textPrimary">{model.avgTotalLatencyMs ? `${Math.round(model.avgTotalLatencyMs)}ms` : "—"}</td>
       <td className="px-6 py-4 text-textPrimary">{model.avgFirstTokenLatencyMs ? `${Math.round(model.avgFirstTokenLatencyMs)}ms` : "—"}</td>
-      <td className="px-6 py-4 text-textSecondary text-xs font-mono">{formatDateTime(model.lastProbeAt, language, { year: "numeric", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }, copy)}</td>
+      <td className="px-6 py-4 text-textSecondary text-xs font-mono">
+        <div className="flex items-center justify-between gap-3">
+          <span>{formatDateTime(model.lastProbeAt, language, { year: "numeric", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }, copy)}</span>
+          <Indicator tone={model.latestStatus} />
+        </div>
+      </td>
     </tr>
   );
 }
@@ -473,7 +479,7 @@ export function PublicDashboard() {
 
           <div className="relative flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
             <div>
-              <h1 className="text-3xl font-mono font-medium tracking-tight text-textPrimary flex items-center gap-3">
+              <h1 className="font-display text-4xl font-medium tracking-tight text-textPrimary flex items-center gap-3 leading-tight">
                 <Activity className="text-success" />
                 {data?.siteTitle || copy.title}
               </h1>
@@ -541,7 +547,7 @@ export function PublicDashboard() {
           </div>
 
           <div>
-            <h2 className="text-xl font-mono text-textPrimary mb-6 flex items-center gap-2">
+            <h2 className="font-display text-[1.65rem] text-textPrimary mb-6 flex items-center gap-2 leading-tight">
               <span className="w-2 h-2 rounded-full bg-accent inline-block" />
               {copy.monitoredModels}
             </h2>
@@ -549,14 +555,14 @@ export function PublicDashboard() {
             {data.models.length === 0 ? (
               <div className="glass-panel p-12 rounded-lg text-center flex flex-col items-center justify-center">
                 <Server className="text-textMuted mb-4" size={40} />
-                <h3 className="text-lg font-medium text-textPrimary mb-2">{copy.noModelsFound}</h3>
+                <h3 className="font-display text-2xl font-medium text-textPrimary mb-2">{copy.noModelsFound}</h3>
                 <p className="text-textSecondary mb-6">{copy.syncToBegin}</p>
               </div>
             ) : (
               <div className="space-y-12">
                 {groupedModels.map((group) => (
                   <div key={group.groupName} className="space-y-8">
-                    <h3 className="text-sm font-mono uppercase tracking-widest text-textMuted border-b border-border pb-2">{group.groupName}</h3>
+                    <h3 className="font-display text-xl text-textPrimary border-b border-border pb-2">{group.groupName}</h3>
                     
                     {group.upstreams.map((upstream) => (
                       <div key={upstream.upstreamName} className="space-y-4">

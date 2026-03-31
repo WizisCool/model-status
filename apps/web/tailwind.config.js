@@ -22,7 +22,9 @@ export default {
       },
       fontFamily: {
         mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', "Liberation Mono", "Courier New", 'monospace'],
-        sans: ['"Inter"', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        sans: ['"Source Han Sans SC"', '"Noto Sans SC"', '"Fira Sans"', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        serif: ['"Noto Serif SC"', '"Songti SC"', '"STSong"', '"Newsreader"', 'ui-serif', 'Georgia', 'serif'],
+        display: ['"Noto Serif SC"', '"Songti SC"', '"STSong"', '"Newsreader"', 'ui-serif', 'Georgia', 'serif'],
       }
     },
   },

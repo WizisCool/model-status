@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Fira+Sans:wght@300;400;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600;6..72,700&family=Noto+Sans+SC:wght@300;400;500;700&family=Noto+Serif+SC:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -33,6 +35,7 @@
   html, body {
     @apply h-full text-textPrimary selection:bg-surface selection:text-textPrimary transition-colors duration-300;
     background-color: var(--background);
+    font-family: "Noto Sans SC", "Fira Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   }
 
   body {
@@ -44,6 +47,11 @@
   
   .dark body {
     background-image: radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  }
+
+  h1, h2, h3, h4, .font-display {
+    font-family: "Noto Serif SC", "Songti SC", "STSong", "Newsreader", ui-serif, Georgia, serif;
+    letter-spacing: -0.01em;
   }
 }
 

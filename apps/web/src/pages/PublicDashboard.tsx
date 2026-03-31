@@ -616,21 +616,21 @@ export function PublicDashboard() {
           </div>
 
           <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div className="space-y-3">
-              <div className="flex items-start gap-4">
-                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl border border-border bg-background/80 text-textPrimary shadow-sm">
-                  <ProjectIcon className="h-6 w-6" />
-                </div>
-                <div>
-                  <h1 className="text-3xl font-mono font-semibold tracking-tight text-textPrimary md:text-4xl">
-                    {data?.siteTitle || copy.title}
-                  </h1>
-                  <p className="mt-2 max-w-2xl text-sm text-textSecondary">
-                    {data?.siteSubtitle || copy.subtitle}
-                  </p>
-                </div>
+            <div className="grid grid-cols-[auto,minmax(0,1fr)] items-center gap-x-4 gap-y-3">
+              <div className="row-span-2 flex h-14 w-14 flex-shrink-0 items-center justify-center self-center rounded-[20px] border border-border bg-background/78 text-textPrimary shadow-[0_16px_36px_-24px_rgba(15,23,42,0.9)]">
+                <ProjectIcon className="h-7 w-7" />
               </div>
-              <SchedulerStatusPill nextProbeAt={data?.nextProbeAt ?? null} dashboardTone={dashboardTone} copy={copy} successLabel={rangeSuccessLabel} />
+              <div className="min-w-0">
+                <h1 className="text-3xl font-mono font-semibold tracking-tight text-textPrimary md:text-4xl">
+                  {data?.siteTitle || copy.title}
+                </h1>
+                <p className="mt-1.5 max-w-2xl text-sm text-textSecondary">
+                  {data?.siteSubtitle || copy.subtitle}
+                </p>
+              </div>
+              <div className="min-w-0">
+                <SchedulerStatusPill nextProbeAt={data?.nextProbeAt ?? null} dashboardTone={dashboardTone} copy={copy} successLabel={rangeSuccessLabel} />
+              </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-3">

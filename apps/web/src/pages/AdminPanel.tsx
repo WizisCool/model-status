@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   AdminActionResponse,
+  AdminSettings,
   AdminDashboardResponse,
   AdminSessionResponse,
   AdminSettingsResponse,
@@ -26,6 +27,24 @@ type EditableAdminSettingsResponse = Omit<AdminSettingsResponse, "upstreams"> & 
 
 type EditableModel = AdminDashboardResponse["models"][number];
 type AdminSection = "overview" | "models" | "upstreams" | "runtime";
+type DurationUnit = "seconds" | "minutes" | "hours";
+
+const DURATION_UNIT_FACTORS: Record<DurationUnit, number> = {
+  seconds: 1000,
+  minutes: 60_000,
+  hours: 3_600_000,
+};
+
+function inferDurationUnit(valueMs: number): DurationUnit {
+  if (valueMs % DURATION_UNIT_FACTORS.hours === 0) return "hours";
+  if (valueMs % DURATION_UNIT_FACTORS.minutes === 0) return "minutes";
+  return "seconds";
+}
+
+function formatDurationValue(valueMs: number, unit: DurationUnit): number {
+  const factor = DURATION_UNIT_FACTORS[unit];
+  return Number((valueMs / factor).toFixed(2));
+}
 
 async function readResponseMessage(response: Response, fallback: string): Promise<string> {
   const raw = await response.text().catch(() => "");
@@ -66,6 +85,7 @@ export function AdminPanel() {
   const [dashboard, setDashboard] = useState<AdminDashboardResponse | null>(null);
   const [editableModels, setEditableModels] = useState<EditableModel[]>([]);
   const [isSavingModels, setIsSavingModels] = useState(false);
+  const [durationUnits, setDurationUnits] = useState<Partial<Record<keyof AdminSettings, DurationUnit>>>({});
   const [activeSection, setActiveSection] = useState<AdminSection>(() => {
     const stored = localStorage.getItem("admin-section");
     return stored === "overview" || stored === "models" || stored === "upstreams" || stored === "runtime" ? stored : "overview";
@@ -154,6 +174,21 @@ export function AdminPanel() {
   useEffect(() => {
     setEditableModels(dashboard?.models.map((model) => ({ ...model })) ?? []);
   }, [dashboard]);
+
+  useEffect(() => {
+    if (!settings) return;
+
+    setDurationUnits((current) => {
+      const next = { ...current };
+      for (const field of settingFields) {
+        if (field.type !== "duration") continue;
+        const valueMs = Number(settings.settings[field.key]);
+        if (!Number.isFinite(valueMs)) continue;
+        next[field.key] = current[field.key] ?? inferDurationUnit(valueMs);
+      }
+      return next;
+    });
+  }, [settingFields, settings]);
 
   async function login() {
     const response = await fetch("/api/admin/login", {
@@ -330,6 +365,17 @@ export function AdminPanel() {
     { id: "upstreams" as const, label: adminCopy.upstreamsNav, description: adminCopy.upstreamsDesc, badge: settings ? String(settings.upstreams.length) : undefined },
     { id: "runtime" as const, label: adminCopy.runtimeNav, description: adminCopy.runtimeDesc },
   ];
+  const durationUnitOptions: Array<{ value: DurationUnit; label: string }> = language === "zh-CN"
+    ? [
+        { value: "seconds", label: "秒" },
+        { value: "minutes", label: "分" },
+        { value: "hours", label: "时" },
+      ]
+    : [
+        { value: "seconds", label: "sec" },
+        { value: "minutes", label: "min" },
+        { value: "hours", label: "hr" },
+      ];
 
   if (!session.authenticated) {
     return (
@@ -603,31 +649,70 @@ export function AdminPanel() {
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   {settingFields.map((field) => {
                     const value = settings.settings[field.key];
+                    const durationUnit = field.type === "duration"
+                      ? (durationUnits[field.key] ?? inferDurationUnit(Number(value)))
+                      : null;
                     return (
                       <label key={field.key} className="space-y-2 rounded-2xl border border-border bg-surface/55 p-4 text-sm text-textSecondary">
                         <div className="space-y-1">
                           <span className="font-mono text-xs uppercase">{field.label}</span>
                           <p className="text-xs text-textMuted">{field.description}</p>
                         </div>
-                        <input
-                          type={field.type}
-                          step={field.step}
-                          value={String(value)}
-                          onChange={(event) =>
-                            setSettings((current) =>
-                              current
-                                ? {
-                                    ...current,
-                                    settings: {
-                                      ...current.settings,
-                                      [field.key]: field.type === "number" ? Number(event.target.value) : event.target.value,
-                                    },
-                                  }
-                                : current,
-                            )
-                          }
-                          className="w-full rounded-xl border border-border bg-background/70 px-3 py-2 text-textPrimary"
-                        />
+                        {field.type === "duration" && durationUnit ? (
+                          <div className="flex gap-2">
+                            <input
+                              type="number"
+                              min="0"
+                              step={field.step ?? "1"}
+                              value={String(formatDurationValue(Number(value), durationUnit))}
+                              onChange={(event) =>
+                                setSettings((current) =>
+                                  current
+                                    ? {
+                                        ...current,
+                                        settings: {
+                                          ...current.settings,
+                                          [field.key]: Math.max(0, Math.round(Number(event.target.value || "0") * DURATION_UNIT_FACTORS[durationUnit])),
+                                        },
+                                      }
+                                    : current,
+                                )
+                              }
+                              className="w-full rounded-xl border border-border bg-background/70 px-3 py-2 text-textPrimary"
+                            />
+                            <select
+                              value={durationUnit}
+                              onChange={(event) => setDurationUnits((current) => ({ ...current, [field.key]: event.target.value as DurationUnit }))}
+                              className="rounded-xl border border-border bg-background/70 px-3 py-2 text-textPrimary"
+                            >
+                              {durationUnitOptions.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        ) : (
+                          <input
+                            type={field.type}
+                            step={field.step}
+                            value={String(value)}
+                            onChange={(event) =>
+                              setSettings((current) =>
+                                current
+                                  ? {
+                                      ...current,
+                                      settings: {
+                                        ...current.settings,
+                                        [field.key]: field.type === "number" ? Number(event.target.value) : event.target.value,
+                                      },
+                                    }
+                                  : current,
+                              )
+                            }
+                            className="w-full rounded-xl border border-border bg-background/70 px-3 py-2 text-textPrimary"
+                          />
+                        )}
                       </label>
                     );
                   })}

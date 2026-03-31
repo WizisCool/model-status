@@ -5,17 +5,32 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.stubGlobal(
   "fetch",
-  vi.fn(async () =>
-    new Response(
+  vi.fn(async () => {
+    const language = localStorage.getItem("lang");
+    const siteTitle = language === "zh-CN" ? "模型状态" : "Model Status";
+    const siteSubtitle = language === "zh-CN" ? "模型 API 监控面板" : "Model API Monitoring Panel";
+
+    return new Response(
       JSON.stringify({
         range: "90m",
         from: new Date().toISOString(),
         to: new Date().toISOString(),
         nextProbeAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+        siteTitle,
+        siteSubtitle,
+        githubRepoUrl: "",
         summary: { totalModels: 2, availableModels: 1, degradedModels: 1, errorModels: 0, availabilityPercentage: 57.5 },
         models: [
           {
+            upstreamId: "main",
+            upstreamName: "Main",
+            upstreamGroup: "default",
             model: "gpt-5",
+            displayName: "GPT 5",
+            icon: "openai",
+            sortOrder: 1,
+            created: null,
+            ownedBy: "openai",
             probes: 2,
             successes: 1,
             failures: 1,
@@ -51,7 +66,15 @@ vi.stubGlobal(
             ],
           },
           {
+            upstreamId: "main",
+            upstreamName: "Main",
+            upstreamGroup: "default",
             model: "gpt-5.1",
+            displayName: "GPT 5.1",
+            icon: "openai",
+            sortOrder: 2,
+            created: null,
+            ownedBy: "openai",
             probes: 2,
             successes: 2,
             failures: 0,
@@ -76,38 +99,10 @@ vi.stubGlobal(
             ],
           },
         ],
-        recentProbes: [
-          {
-            id: 1,
-            model: "gpt-5",
-            startedAt: new Date().toISOString(),
-            completedAt: new Date().toISOString(),
-            success: true,
-            statusCode: 200,
-            error: null,
-            connectivityLatencyMs: 321,
-            firstTokenLatencyMs: 654,
-            totalLatencyMs: 987,
-            rawResponseText: "ok",
-          },
-          {
-            id: 2,
-            model: "gpt-5",
-            startedAt: new Date().toISOString(),
-            completedAt: new Date().toISOString(),
-            success: false,
-            statusCode: 500,
-            error: "bad",
-            connectivityLatencyMs: 100,
-            firstTokenLatencyMs: null,
-            totalLatencyMs: 200,
-            rawResponseText: "error",
-          },
-        ],
       }),
       { status: 200 },
-    ),
-  ),
+    );
+  }),
 );
 
 describe("App", () => {
@@ -126,7 +121,7 @@ describe("App", () => {
 
     render(<App />);
 
-    expect(await screen.findByText("总模型数")).toBeInTheDocument();
-    expect(screen.getAllByText("Model API Monitoring Panel").length).toBeGreaterThan(0);
+    expect(await screen.findByText("模型总数")).toBeInTheDocument();
+    expect(screen.getAllByText("模型 API 监控面板").length).toBeGreaterThan(0);
   });
 });

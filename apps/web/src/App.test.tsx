@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -219,5 +219,19 @@ describe("App", () => {
     expect(await screen.findByText(/\u4e0b\u6b21\u63a2\u6d4b\u5012\u8ba1\u65f6/)).toBeInTheDocument();
     expect(document.documentElement.lang).toBe("zh-CN");
     languageGetter.mockRestore();
+  });
+
+  it("does not enter the loading screen when clicking the active range again", async () => {
+    render(<App />);
+
+    expect(await screen.findByText("Model")).toBeInTheDocument();
+    const dashboardFetchCallsBefore = vi.mocked(fetch).mock.calls.filter(([input]) => String(input).includes("/api/dashboard")).length;
+
+    fireEvent.click(screen.getByRole("button", { name: "90m" }));
+
+    expect(screen.queryByText("Establishing connection...")).not.toBeInTheDocument();
+    const dashboardFetchCallsAfter = vi.mocked(fetch).mock.calls.filter(([input]) => String(input).includes("/api/dashboard")).length;
+    expect(dashboardFetchCallsAfter).toBe(dashboardFetchCallsBefore);
+    expect(screen.getByText("Model")).toBeInTheDocument();
   });
 });

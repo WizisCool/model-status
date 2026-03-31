@@ -565,6 +565,10 @@ export function PublicDashboard() {
   const dashboardTone = getDashboardTone(data?.summary ?? null);
 
   const handleRangeChange = (value: DashboardRange) => {
+    if (value === range) {
+      return;
+    }
+
     setLoading(true);
     setData(null);
     setRange(value);

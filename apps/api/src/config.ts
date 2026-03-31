@@ -107,6 +107,8 @@ export type AppConfig = {
   host: string;
   port: number;
   webOrigin: string;
+  accessUrl: string;
+  basePath: string;
   databaseFile: string;
   adminBootstrapUsername: string;
   adminBootstrapPassword: string;
@@ -116,15 +118,39 @@ export type AppConfig = {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+function normalizeBasePath(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "";
+  }
+
+  let pathname = trimmed;
+
+  try {
+    pathname = new URL(trimmed).pathname;
+  } catch {
+    pathname = trimmed;
+  }
+
+  const withLeadingSlash = pathname.startsWith("/") ? pathname : `/${pathname}`;
+  const normalized = trimTrailingSlash(withLeadingSlash);
+  return normalized === "/" ? "" : normalized;
+}
+
 export function loadConfig(envSource: EnvSource = process.env): AppConfig {
   const workspaceRoot = findWorkspaceRoot(__dirname);
   const env = { ...loadFileEnv(__dirname), ...envSource };
+  const webOrigin = readString(env, "WEB_ORIGIN", "http://localhost:5173");
+  const accessUrl = readString(env, "ACCESS_URL", webOrigin);
+
   return {
     workspaceRoot,
     webDistDir: resolve(workspaceRoot, "apps/web/dist"),
     host: readString(env, "HOST", "0.0.0.0"),
     port: readNumber(env, "PORT", 3000),
-    webOrigin: readString(env, "WEB_ORIGIN", "http://localhost:5173"),
+    webOrigin,
+    accessUrl,
+    basePath: normalizeBasePath(accessUrl),
     databaseFile: resolve(workspaceRoot, readString(env, "DATABASE_FILE", "./data/model-status.db")),
     adminBootstrapUsername: readString(env, "ADMIN_BOOTSTRAP_USERNAME", "admin"),
     adminBootstrapPassword: readString(env, "ADMIN_BOOTSTRAP_PASSWORD", ""),

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ModelIcon } from "../components/ModelIcon";
 import { ProjectIcon } from "../components/ProjectIcon";
+import { buildApiPath, buildAppPath } from "../basePath";
 import { getTranslation, normalizeLanguage, type Language, type Translation } from "../i18n";
 import { applyTheme, getInitialRange, getInitialTheme, getInitialViewMode, syncUrlState, type ThemeMode, type ViewMode } from "../preferences";
 import { listenForDashboardRefresh } from "../services/dashboardEvents";
@@ -475,7 +476,7 @@ export function PublicDashboard() {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch(`/api/dashboard?range=${range}`);
+      const response = await fetch(buildApiPath(`/api/dashboard?range=${range}`));
       if (!response.ok) {
         throw new Error(copy.fetchDashboardFailed);
       }
@@ -608,7 +609,7 @@ export function PublicDashboard() {
 
   const checkAdmin = useCallback(async () => {
     try {
-      const response = await fetch("/api/admin/session");
+      const response = await fetch(buildApiPath("/api/admin/session"));
       if (response.ok) {
         const json = await response.json();
         setIsAdmin(json.authenticated);
@@ -725,7 +726,7 @@ export function PublicDashboard() {
                 <div className="flex items-center gap-2">
                   {isAdmin ? (
                     <a
-                      href="/admin"
+                      href={buildAppPath("/admin")}
                       className="glass-button flex h-10 w-10 items-center justify-center rounded-xl text-textSecondary hover:text-textPrimary"
                       title={copy.adminDashboard}
                       aria-label={copy.adminDashboard}

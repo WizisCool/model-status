@@ -14,7 +14,8 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
-  IMAGE_PLATFORMS: linux/amd64,linux/arm64,linux/arm/v7
+  IMAGE_PLATFORMS: linux/amd64,linux/arm64
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   docker:

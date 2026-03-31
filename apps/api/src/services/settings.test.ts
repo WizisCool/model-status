@@ -10,6 +10,8 @@ const testConfig: AppConfig = {
   host: "127.0.0.1",
   port: 3000,
   webOrigin: "http://127.0.0.1:3000",
+  accessUrl: "http://127.0.0.1:3000",
+  basePath: "",
   databaseFile: ":memory:",
   adminBootstrapUsername: "admin",
   adminBootstrapPassword: "password",

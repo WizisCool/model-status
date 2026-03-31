@@ -46,10 +46,17 @@ Copy-Item .env.example .env
 PORT=3000
 HOST=0.0.0.0
 WEB_ORIGIN=http://localhost:5173
+ACCESS_URL=
 DATABASE_FILE=./data/model-status.db
 ADMIN_BOOTSTRAP_USERNAME=admin
 ADMIN_BOOTSTRAP_PASSWORD=change-me
 SESSION_SECRET=replace-this-in-production
+```
+
+如果站点通过反向代理挂载到子路径，例如 `https://ai.dooo.ng/status`，请将 `ACCESS_URL` 设置为完整访问地址：
+
+```env
+ACCESS_URL=https://ai.dooo.ng/status
 ```
 
 4. 启动开发环境

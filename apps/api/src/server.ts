@@ -22,6 +22,7 @@ const db = createDb(bootstrapConfig.databaseFile);
 ensureRuntimeSettings(db, bootstrapConfig);
 ensureAdminUser(db, bootstrapConfig);
 const scheduler = createScheduler(bootstrapConfig, db);
+let cachedIndexHtml: string | null = null;
 
 function sendJson(response: import("node:http").ServerResponse, statusCode: number, body: unknown) {
   response.statusCode = statusCode;
@@ -57,6 +58,50 @@ function getContentType(filePath: string): string {
   }
 }
 
+function stripBasePath(pathname: string): string {
+  const { basePath } = bootstrapConfig;
+  if (!basePath) {
+    return pathname;
+  }
+
+  if (pathname === basePath || pathname === `${basePath}/`) {
+    return "/";
+  }
+
+  if (pathname.startsWith(`${basePath}/`)) {
+    return pathname.slice(basePath.length) || "/";
+  }
+
+  return pathname;
+}
+
+function prefixBasePath(path: string): string {
+  if (!bootstrapConfig.basePath) {
+    return path;
+  }
+
+  return path === "/" ? bootstrapConfig.basePath : `${bootstrapConfig.basePath}${path}`;
+}
+
+function getIndexHtml(): string | null {
+  const indexPath = join(bootstrapConfig.webDistDir, "index.html");
+  if (!existsSync(indexPath)) {
+    return null;
+  }
+
+  if (cachedIndexHtml) {
+    return cachedIndexHtml;
+  }
+
+  const basePathScript = `<script>window.__MODEL_STATUS_BASE_PATH__=${JSON.stringify(bootstrapConfig.basePath)};</script>`;
+  cachedIndexHtml = readFileSync(indexPath, "utf8")
+    .replace(/(href|src)="\/assets\//gu, `$1="${prefixBasePath("/assets/")}`)
+    .replace(/href="\/project-icon\.svg"/gu, `href="${prefixBasePath("/project-icon.svg")}"`)
+    .replace("</head>", `${basePathScript}</head>`);
+
+  return cachedIndexHtml;
+}
+
 function tryServeFrontend(response: import("node:http").ServerResponse, pathname: string): boolean {
   if (!existsSync(bootstrapConfig.webDistDir)) {
     return false;
@@ -74,7 +119,11 @@ function tryServeFrontend(response: import("node:http").ServerResponse, pathname
   if (existsSync(absolutePath) && statSync(absolutePath).isFile()) {
     response.statusCode = 200;
     response.setHeader("Content-Type", getContentType(absolutePath));
-    response.end(readFileSync(absolutePath));
+    if (safePath === "index.html") {
+      response.end(getIndexHtml() ?? readFileSync(absolutePath));
+    } else {
+      response.end(readFileSync(absolutePath));
+    }
     return true;
   }
 
@@ -82,14 +131,14 @@ function tryServeFrontend(response: import("node:http").ServerResponse, pathname
     return false;
   }
 
-  const indexPath = join(bootstrapConfig.webDistDir, "index.html");
-  if (!existsSync(indexPath)) {
+  const indexHtml = getIndexHtml();
+  if (!indexHtml) {
     return false;
   }
 
   response.statusCode = 200;
   response.setHeader("Content-Type", "text/html; charset=utf-8");
-  response.end(readFileSync(indexPath));
+  response.end(indexHtml);
   return true;
 }
 
@@ -133,6 +182,7 @@ const server = createServer(async (request, response) => {
     }
 
     url = new URL(request.url, `http://${request.headers.host ?? "localhost"}`);
+    const pathname = stripBasePath(url.pathname);
 
     if (request.method === "OPTIONS") {
       response.statusCode = 204;
@@ -143,12 +193,12 @@ const server = createServer(async (request, response) => {
       return;
     }
 
-    if (request.method === "GET" && url.pathname === "/api/health") {
+    if (request.method === "GET" && pathname === "/api/health") {
       sendJson(response, 200, { ok: true, now: new Date().toISOString() });
       return;
     }
 
-    if (request.method === "GET" && url.pathname === "/api/dashboard") {
+    if (request.method === "GET" && pathname === "/api/dashboard") {
       const rangeParam = url.searchParams.get("range") ?? "90m";
       if (!isDashboardRange(rangeParam)) {
         sendJson(response, 400, { error: "Invalid range. Use one of: 90m,24h,7d,30d" });
@@ -163,12 +213,12 @@ const server = createServer(async (request, response) => {
       return;
     }
 
-    if (request.method === "GET" && url.pathname === "/api/admin/session") {
+    if (request.method === "GET" && pathname === "/api/admin/session") {
       sendJson(response, 200, getSession(request));
       return;
     }
 
-    if (request.method === "POST" && url.pathname === "/api/admin/login") {
+    if (request.method === "POST" && pathname === "/api/admin/login") {
       const body = await parseJsonBody<{ username?: string; password?: string }>(request);
       const result = loginAdmin(db, bootstrapConfig, body.username ?? "", body.password ?? "");
       if (!result) {
@@ -181,14 +231,14 @@ const server = createServer(async (request, response) => {
       return;
     }
 
-    if (request.method === "POST" && url.pathname === "/api/admin/logout") {
+    if (request.method === "POST" && pathname === "/api/admin/logout") {
       logoutAdmin(db, bootstrapConfig, request.headers.cookie);
       response.setHeader("Set-Cookie", clearSessionCookie(bootstrapConfig));
       sendJson(response, 200, { authenticated: false, username: null } satisfies AdminSessionResponse);
       return;
     }
 
-    if (request.method === "GET" && url.pathname === "/api/admin/settings") {
+    if (request.method === "GET" && pathname === "/api/admin/settings") {
       if (!requireAdmin(request, response)) {
         return;
       }
@@ -197,7 +247,7 @@ const server = createServer(async (request, response) => {
       return;
     }
 
-    if (request.method === "GET" && url.pathname === "/api/admin/dashboard") {
+    if (request.method === "GET" && pathname === "/api/admin/dashboard") {
       if (!requireAdmin(request, response)) {
         return;
       }
@@ -216,7 +266,7 @@ const server = createServer(async (request, response) => {
       return;
     }
 
-    if (request.method === "PUT" && url.pathname === "/api/admin/settings") {
+    if (request.method === "PUT" && pathname === "/api/admin/settings") {
       if (!requireAdmin(request, response)) {
         return;
       }
@@ -226,7 +276,7 @@ const server = createServer(async (request, response) => {
       return;
     }
 
-    if (request.method === "PUT" && url.pathname === "/api/admin/models") {
+    if (request.method === "PUT" && pathname === "/api/admin/models") {
       if (!requireAdmin(request, response)) {
         return;
       }
@@ -237,7 +287,7 @@ const server = createServer(async (request, response) => {
       return;
     }
 
-    if (request.method === "POST" && url.pathname === "/api/admin/actions/sync-models") {
+    if (request.method === "POST" && pathname === "/api/admin/actions/sync-models") {
       if (!requireAdmin(request, response)) {
         return;
       }
@@ -247,7 +297,7 @@ const server = createServer(async (request, response) => {
       return;
     }
 
-    if (request.method === "POST" && url.pathname === "/api/admin/actions/run-probes") {
+    if (request.method === "POST" && pathname === "/api/admin/actions/run-probes") {
       if (!requireAdmin(request, response)) {
         return;
       }
@@ -262,7 +312,7 @@ const server = createServer(async (request, response) => {
       return;
     }
 
-    if (request.method === "GET" && tryServeFrontend(response, url.pathname)) {
+    if (request.method === "GET" && tryServeFrontend(response, pathname)) {
       return;
     }
 
@@ -273,7 +323,7 @@ const server = createServer(async (request, response) => {
       return;
     }
 
-    const pathname = url?.pathname ?? request.url ?? "";
+    const pathname = stripBasePath(url?.pathname ?? request.url ?? "");
     const isAdminRoute = pathname.startsWith("/api/admin");
     const statusCode = error instanceof HttpError ? error.statusCode : 500;
     const errorMessage = error instanceof Error ? error.message : "Unexpected server error";

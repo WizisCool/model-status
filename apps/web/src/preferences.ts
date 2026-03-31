@@ -1,4 +1,5 @@
 import type { DashboardRange } from "@model-status/shared";
+import { stripBasePath } from "./basePath";
 
 export type ViewMode = "grid" | "list";
 
@@ -73,5 +74,5 @@ export function applyTheme(theme: ThemeMode): void {
 }
 
 export function getAdminRoute(): boolean {
-  return window.location.pathname === "/admin";
+  return stripBasePath(window.location.pathname) === "/admin";
 }

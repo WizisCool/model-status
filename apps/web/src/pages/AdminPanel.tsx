@@ -11,6 +11,7 @@ import type {
 } from "@model-status/shared";
 
 import { ModelManagerSection } from "../components/ModelManagerSection";
+import { buildApiPath } from "../basePath";
 import { ProjectIcon } from "../components/ProjectIcon";
 import { getAdminCopy, type SettingGroupConfig } from "../adminCopy";
 import { ToastRegion, type ToastNotice, type ToastTone } from "../components/ToastRegion";
@@ -160,12 +161,12 @@ export function AdminPanel() {
   }, []);
 
   const refreshSession = useCallback(async () => {
-    const response = await fetch("/api/admin/session");
+    const response = await fetch(buildApiPath("/api/admin/session"));
     setSession((await response.json()) as AdminSessionResponse);
   }, []);
 
   const refreshSettings = useCallback(async () => {
-    const response = await fetch("/api/admin/settings", { credentials: "include" });
+    const response = await fetch(buildApiPath("/api/admin/settings"), { credentials: "include" });
     if (!response.ok) {
       await notifyErrorResponse(response);
       return;
@@ -175,7 +176,7 @@ export function AdminPanel() {
   }, [notifyErrorResponse]);
 
   const refreshDashboard = useCallback(async () => {
-    const response = await fetch("/api/admin/dashboard?range=24h", { credentials: "include" });
+    const response = await fetch(buildApiPath("/api/admin/dashboard?range=24h"), { credentials: "include" });
     if (!response.ok) return;
     setDashboard((await response.json()) as AdminDashboardResponse);
   }, []);
@@ -218,7 +219,7 @@ export function AdminPanel() {
   }, [settingFields, settings]);
 
   async function login() {
-    const response = await fetch("/api/admin/login", {
+    const response = await fetch(buildApiPath("/api/admin/login"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -233,7 +234,7 @@ export function AdminPanel() {
   }
 
   async function logout() {
-    await fetch("/api/admin/logout", { method: "POST", credentials: "include" });
+    await fetch(buildApiPath("/api/admin/logout"), { method: "POST", credentials: "include" });
     setSession({ authenticated: false, username: null });
     setSettings(null);
   }
@@ -252,7 +253,7 @@ export function AdminPanel() {
         apiKey: upstream.newApiKey || undefined,
       })),
     };
-    const response = await fetch("/api/admin/settings", {
+    const response = await fetch(buildApiPath("/api/admin/settings"), {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -267,7 +268,7 @@ export function AdminPanel() {
     pushNotification("success", copy.saveSettings);
     announceDashboardRefresh("settings-saved");
     if (payload.upstreams?.some((upstream) => upstream.apiKey !== undefined)) {
-      const syncResponse = await fetch("/api/admin/actions/sync-models", { method: "POST", credentials: "include" }).catch(() => null);
+      const syncResponse = await fetch(buildApiPath("/api/admin/actions/sync-models"), { method: "POST", credentials: "include" }).catch(() => null);
       if (!syncResponse) {
         pushNotification("error", requestFailedCopy);
         return;
@@ -355,7 +356,7 @@ export function AdminPanel() {
           sortOrder: model.sortOrder,
         })),
       };
-      const response = await fetch("/api/admin/models", {
+      const response = await fetch(buildApiPath("/api/admin/models"), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -375,7 +376,7 @@ export function AdminPanel() {
   }
 
   async function runAction(endpoint: string) {
-    const response = await fetch(endpoint, { method: "POST", credentials: "include" });
+    const response = await fetch(buildApiPath(endpoint), { method: "POST", credentials: "include" });
     if (!response.ok) {
       await notifyErrorResponse(response);
       return;

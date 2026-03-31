@@ -118,6 +118,7 @@ vi.stubGlobal("fetch", vi.fn(defaultFetchImpl));
 beforeEach(() => {
   localStorage.clear();
   window.history.replaceState({}, "", "/");
+  delete window.__MODEL_STATUS_BASE_PATH__;
   vi.mocked(fetch).mockImplementation(defaultFetchImpl);
 });
 
@@ -233,5 +234,30 @@ describe("App", () => {
     const dashboardFetchCallsAfter = vi.mocked(fetch).mock.calls.filter(([input]) => String(input).includes("/api/dashboard")).length;
     expect(dashboardFetchCallsAfter).toBe(dashboardFetchCallsBefore);
     expect(screen.getByText("Model")).toBeInTheDocument();
+  });
+
+  it("prefixes dashboard requests and admin links with the configured base path", async () => {
+    window.__MODEL_STATUS_BASE_PATH__ = "/status";
+    window.history.replaceState({}, "", "/status");
+
+    vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/api/admin/session")) {
+        return new Response(JSON.stringify({ authenticated: true, username: "admin" }), { status: 200 });
+      }
+
+      return new Response(
+        JSON.stringify(buildDashboardResponse("en")),
+        { status: 200 },
+      );
+    });
+
+    render(<App />);
+
+    expect(await screen.findByText("Model")).toBeInTheDocument();
+    expect(vi.mocked(fetch).mock.calls.some(([input]) => String(input).includes("/status/api/dashboard?range=90m"))).toBe(true);
+
+    const adminLink = screen.getByRole("link", { name: "Admin Dashboard" });
+    expect(adminLink).toHaveAttribute("href", "/status/admin");
   });
 });

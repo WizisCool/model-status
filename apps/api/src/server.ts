@@ -2,14 +2,14 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { createServer } from "node:http";
 import { extname, join, normalize, resolve } from "node:path";
 
-import type { AdminActionResponse, AdminDashboardResponse, AdminSessionResponse, UpdateAdminModelsRequest, UpdateAdminSettingsRequest } from "@model-status/shared";
+import type { AdminActionResponse, AdminDashboardResponse, AdminSessionResponse, UpdateAdminAccountRequest, UpdateAdminModelsRequest, UpdateAdminSettingsRequest } from "@model-status/shared";
 import { isDashboardRange } from "@model-status/shared";
 
 import { loadConfig } from "./config";
 import { createDb } from "./db";
 import { HttpError } from "./http-error";
 import { isAllowedAdminOrigin } from "./origin";
-import { clearSessionCookie, createSessionCookie, ensureAdminUser, getAdminSession, loginAdmin, logoutAdmin } from "./services/auth";
+import { clearSessionCookie, createSessionCookie, ensureAdminUser, getAdminSession, loginAdmin, logoutAdmin, updateAdminAccount } from "./services/auth";
 import { getRuntimeSettings, getAdminSettingsResponse, updateAdminSettings, ensureRuntimeSettings } from "./services/settings";
 import { syncModelCatalog } from "./services/catalog";
 import { getDashboardData, toPublicDashboardResponse } from "./services/dashboard";
@@ -235,6 +235,17 @@ const server = createServer(async (request, response) => {
       logoutAdmin(db, bootstrapConfig, request.headers.cookie);
       response.setHeader("Set-Cookie", clearSessionCookie(bootstrapConfig));
       sendJson(response, 200, { authenticated: false, username: null } satisfies AdminSessionResponse);
+      return;
+    }
+
+    if (request.method === "PUT" && pathname === "/api/admin/account") {
+      const session = requireAdmin(request, response);
+      if (!session) {
+        return;
+      }
+
+      const body = await parseJsonBody<UpdateAdminAccountRequest>(request);
+      sendJson(response, 200, updateAdminAccount(db, session.username ?? "", body));
       return;
     }
 

@@ -198,6 +198,11 @@ export type AdminActionResponse = {
   message: string;
 };
 
+export type UpdateAdminAccountRequest = {
+  currentPassword: string;
+  newPassword: string;
+};
+
 export function isDashboardRange(value: string): value is DashboardRange {
   return FIXED_DASHBOARD_RANGES.includes(value as DashboardRange);
 }

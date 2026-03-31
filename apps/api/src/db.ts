@@ -63,6 +63,7 @@ export type DbClient = {
   getAdminUserByUsername(username: string): AdminUserRecord | null;
   getAdminUserById(userId: number): AdminUserRecord | null;
   createAdminUser(username: string, passwordHash: string, createdAt: string): void;
+  updateAdminCredentials?(userId: number, username: string, passwordHash: string, updatedAt: string): void;
   updateAdminLogin(userId: number, loggedInAt: string): void;
   createAdminSession(session: AdminSessionRecord): void;
   getAdminSessionByTokenHash(tokenHash: string): AdminSessionRecord | null;
@@ -483,6 +484,12 @@ export function createDb(databaseFile: string): DbClient {
     VALUES (?, ?, ?, ?)
   `);
 
+  const updateAdminCredentialsStmt = db.prepare(`
+    UPDATE admin_users
+    SET username = ?, password_hash = ?, password_updated_at = ?
+    WHERE id = ?
+  `);
+
   const updateAdminLoginStmt = db.prepare(`
     UPDATE admin_users
     SET last_login_at = ?
@@ -615,6 +622,9 @@ export function createDb(databaseFile: string): DbClient {
     },
     createAdminUser(username, passwordHash, createdAt) {
       createAdminUserStmt.run(username, passwordHash, createdAt, createdAt);
+    },
+    updateAdminCredentials(userId, username, passwordHash, updatedAt) {
+      updateAdminCredentialsStmt.run(username, passwordHash, updatedAt, userId);
     },
     updateAdminLogin(userId, loggedInAt) {
       updateAdminLoginStmt.run(loggedInAt, userId);

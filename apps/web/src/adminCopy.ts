@@ -67,6 +67,16 @@ export type AdminCopy = {
   runProbes: string;
   settings: string;
   saveSettings: string;
+  accountSecurity: string;
+  accountSecurityDesc: string;
+  currentPassword: string;
+  newPassword: string;
+  passwordLeaveBlank: string;
+  saveAccount: string;
+  accountUpdated: string;
+  currentPasswordRequired: string;
+  newPasswordRequired: string;
+  accountNoChanges: string;
   unauthorized: string;
   requestFailed: string;
   modelHealth: string;
@@ -163,6 +173,16 @@ const adminCopyByLanguage: Record<Language, AdminCopy> = {
     runProbes: "Run Probes",
     settings: "Settings",
     saveSettings: "Save Settings",
+    accountSecurity: "Account Security",
+    accountSecurityDesc: "Update the current admin password.",
+    currentPassword: "Current Password",
+    newPassword: "New Password",
+    passwordLeaveBlank: "Enter the current password and a new password to update credentials.",
+    saveAccount: "Save Account",
+    accountUpdated: "Account updated",
+    currentPasswordRequired: "Current password is required",
+    newPasswordRequired: "New password is required",
+    accountNoChanges: "No password changes to save",
     unauthorized: "Unauthorized",
     requestFailed: "Request failed",
     modelHealth: "Model health",
@@ -310,6 +330,16 @@ const adminCopyByLanguage: Record<Language, AdminCopy> = {
     runProbes: "立即探测",
     settings: "设置",
     saveSettings: "保存设置",
+    accountSecurity: "账号安全",
+    accountSecurityDesc: "修改当前管理员密码。",
+    currentPassword: "当前密码",
+    newPassword: "新密码",
+    passwordLeaveBlank: "输入当前密码和新密码即可更新凭据。",
+    saveAccount: "保存账号",
+    accountUpdated: "账号已更新",
+    currentPasswordRequired: "请输入当前密码",
+    newPasswordRequired: "请输入新密码",
+    accountNoChanges: "没有需要保存的密码变更",
     unauthorized: "未授权",
     requestFailed: "请求失败",
     modelHealth: "模型健康",

@@ -1,5 +1,11 @@
 <div align="center">
   <img src="apps/web/public/project-icon.svg" width="88" alt="Model Status 图标" />
+  <p>
+    <img
+      src="https://socialify.git.ci/wiziscool/model-status/image?custom_description=%E9%9D%A2%E5%90%91+OpenAI+%E5%85%BC%E5%AE%B9%E6%A8%A1%E5%9E%8B%E6%8E%A5%E5%8F%A3%E7%9A%84%E6%A8%A1%E5%9E%8B%E7%8A%B6%E6%80%81%E7%9B%91%E6%8E%A7%E9%9D%A2%E6%9D%BF&description=1&font=Inter&language=1&name=1&owner=1&pattern=Plus&stargazers=1&theme=Auto"
+      alt="Model Status Socialify"
+    />
+  </p>
   <h1>Model Status</h1>
   <p><strong>一个面向 OpenAI 兼容模型接口的本地优先监控面板。</strong></p>
 </div>

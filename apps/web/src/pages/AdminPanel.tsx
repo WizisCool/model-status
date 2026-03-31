@@ -6,12 +6,13 @@ import type {
   AdminDashboardResponse,
   AdminSessionResponse,
   AdminSettingsResponse,
+  UpdateAdminAccountRequest,
   UpdateAdminModelsRequest,
   UpdateAdminSettingsRequest,
 } from "@model-status/shared";
 
 import { ModelManagerSection } from "../components/ModelManagerSection";
-import { buildApiPath } from "../basePath";
+import { buildApiPath, buildAppPath } from "../basePath";
 import { ProjectIcon } from "../components/ProjectIcon";
 import { getAdminCopy, type SettingGroupConfig } from "../adminCopy";
 import { ToastRegion, type ToastNotice, type ToastTone } from "../components/ToastRegion";
@@ -108,6 +109,9 @@ export function AdminPanel() {
   const [settings, setSettings] = useState<EditableAdminSettingsResponse | null>(null);
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [isSavingAccount, setIsSavingAccount] = useState(false);
   const [notifications, setNotifications] = useState<ToastNotice[]>([]);
   const [dashboard, setDashboard] = useState<AdminDashboardResponse | null>(null);
   const [editableModels, setEditableModels] = useState<EditableModel[]>([]);
@@ -375,6 +379,45 @@ export function AdminPanel() {
     }
   }
 
+  async function saveAccountSettings() {
+    if (!currentPassword) {
+      pushNotification("error", adminCopy.currentPasswordRequired);
+      return;
+    }
+
+    if (!newPassword) {
+      pushNotification("error", adminCopy.newPasswordRequired);
+      return;
+    }
+
+    setIsSavingAccount(true);
+    try {
+      const payload: UpdateAdminAccountRequest = {
+        currentPassword,
+        newPassword,
+      };
+
+      const response = await fetch(buildApiPath("/api/admin/account"), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        await notifyErrorResponse(response);
+        return;
+      }
+
+      const json = (await response.json()) as AdminSessionResponse;
+      setSession(json);
+      setCurrentPassword("");
+      setNewPassword("");
+      pushNotification("success", adminCopy.accountUpdated);
+    } finally {
+      setIsSavingAccount(false);
+    }
+  }
+
   async function runAction(endpoint: string) {
     const response = await fetch(buildApiPath(endpoint), { method: "POST", credentials: "include" });
     if (!response.ok) {
@@ -450,10 +493,10 @@ export function AdminPanel() {
 
               <div className="glass-panel w-full max-w-md rounded-[28px] border border-border p-6 shadow-lg shadow-black/5">
                 <div className="flex justify-end gap-2">
-                  <button type="button" onClick={() => setLanguage((prev) => (prev === "en" ? "zh-CN" : "en"))} className="glass-button rounded-xl p-2 text-textSecondary hover:text-textPrimary" title={copy.toggleLanguage} aria-label={copy.toggleLanguage}>
+                  <button type="button" onClick={() => setLanguage((prev) => (prev === "en" ? "zh-CN" : "en"))} className="glass-button flex h-10 w-10 items-center justify-center rounded-xl text-textSecondary hover:text-textPrimary" title={copy.toggleLanguage} aria-label={copy.toggleLanguage}>
                     <Languages size={16} />
                   </button>
-                  <button type="button" onClick={() => setTheme((prev) => (prev === "dark" ? "light" : "dark"))} className="glass-button rounded-xl p-2 text-textSecondary hover:text-textPrimary" title={copy.toggleTheme} aria-label={copy.toggleTheme}>
+                  <button type="button" onClick={() => setTheme((prev) => (prev === "dark" ? "light" : "dark"))} className="glass-button flex h-10 w-10 items-center justify-center rounded-xl text-textSecondary hover:text-textPrimary" title={copy.toggleTheme} aria-label={copy.toggleTheme}>
                     {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
                   </button>
                 </div>
@@ -500,16 +543,16 @@ export function AdminPanel() {
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <button type="button" onClick={() => setLanguage((prev) => (prev === "en" ? "zh-CN" : "en"))} className="glass-button rounded-xl p-2 text-textSecondary hover:text-textPrimary" title={copy.toggleLanguage} aria-label={copy.toggleLanguage}>
+              <button type="button" onClick={() => setLanguage((prev) => (prev === "en" ? "zh-CN" : "en"))} className="glass-button flex h-10 w-10 items-center justify-center rounded-xl text-textSecondary hover:text-textPrimary" title={copy.toggleLanguage} aria-label={copy.toggleLanguage}>
                 <Languages size={16} />
               </button>
-              <button type="button" onClick={() => setTheme((prev) => (prev === "dark" ? "light" : "dark"))} className="glass-button rounded-xl p-2 text-textSecondary hover:text-textPrimary" title={copy.toggleTheme} aria-label={copy.toggleTheme}>
+              <button type="button" onClick={() => setTheme((prev) => (prev === "dark" ? "light" : "dark"))} className="glass-button flex h-10 w-10 items-center justify-center rounded-xl text-textSecondary hover:text-textPrimary" title={copy.toggleTheme} aria-label={copy.toggleTheme}>
                 {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
               </button>
-              <a href="/" className="glass-button flex h-10 w-10 items-center justify-center rounded-xl text-textSecondary hover:text-textPrimary" title={copy.publicDashboard} aria-label={copy.publicDashboard}>
+              <a href={buildAppPath("/")} className="glass-button flex h-10 w-10 items-center justify-center rounded-xl text-textSecondary hover:text-textPrimary" title={copy.publicDashboard} aria-label={copy.publicDashboard}>
                 <Monitor size={16} />
               </a>
-              <button type="button" onClick={logout} className="glass-button rounded-xl p-2 text-textSecondary hover:text-textPrimary" title={copy.logout} aria-label={copy.logout}>
+              <button type="button" onClick={logout} className="glass-button flex h-10 w-10 items-center justify-center rounded-xl text-textSecondary hover:text-textPrimary" title={copy.logout} aria-label={copy.logout}>
                 <LogOut size={16} />
               </button>
             </div>
@@ -700,6 +743,45 @@ export function AdminPanel() {
                   </div>
                   <button type="button" onClick={saveSettings} className="glass-button rounded-xl px-4 py-2 text-sm font-mono">{copy.saveSettings}</button>
                 </div>
+
+                <section className="rounded-[26px] border border-border bg-surface/55 p-5 shadow-sm shadow-black/5">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <h3 className="text-lg font-mono text-textPrimary">{adminCopy.accountSecurity}</h3>
+                      <p className="mt-1 text-sm text-textSecondary">{adminCopy.accountSecurityDesc}</p>
+                      <p className="mt-2 text-xs text-textMuted">{adminCopy.passwordLeaveBlank}</p>
+                    </div>
+                    <button type="button" onClick={() => void saveAccountSettings()} className="glass-button rounded-xl px-4 py-2 text-sm font-mono" disabled={isSavingAccount}>
+                      {adminCopy.saveAccount}
+                    </button>
+                  </div>
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <label className="space-y-2 rounded-2xl border border-border bg-background/70 p-4 text-sm text-textSecondary">
+                      <div className="space-y-1">
+                        <span className="font-mono text-xs uppercase">{adminCopy.currentPassword}</span>
+                      </div>
+                      <input
+                        value={currentPassword}
+                        onChange={(event) => setCurrentPassword(event.target.value)}
+                        type="password"
+                        className="w-full rounded-xl border border-border bg-surface/80 px-3 py-2 text-textPrimary"
+                      />
+                    </label>
+
+                    <label className="space-y-2 rounded-2xl border border-border bg-background/70 p-4 text-sm text-textSecondary">
+                      <div className="space-y-1">
+                        <span className="font-mono text-xs uppercase">{adminCopy.newPassword}</span>
+                      </div>
+                      <input
+                        value={newPassword}
+                        onChange={(event) => setNewPassword(event.target.value)}
+                        type="password"
+                        className="w-full rounded-xl border border-border bg-surface/80 px-3 py-2 text-textPrimary"
+                      />
+                    </label>
+                  </div>
+                </section>
 
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   {runtimeHighlights.map((item) => (

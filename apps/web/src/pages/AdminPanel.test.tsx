@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom/vitest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -196,5 +196,93 @@ describe("AdminPanel", () => {
     expect((await screen.findAllByText("Retry Policy")).length).toBeGreaterThan(0);
     expect(screen.getAllByText("Failed Retry Attempts").length).toBeGreaterThan(0);
     expect(screen.queryByText("Repository URL")).not.toBeInTheDocument();
+  });
+
+  it("updates the current admin account from runtime settings", async () => {
+    const user = userEvent.setup();
+    localStorage.setItem("admin-section", "runtime");
+
+    const settingsResponse = {
+      settings: {
+        siteTitle: "Model Status",
+        siteSubtitle: "Model API Monitoring Panel",
+        showSummaryCards: false,
+        probeIntervalMs: 300000,
+        catalogSyncIntervalMs: 900000,
+        probeTimeoutMs: 20000,
+        probeConcurrency: 4,
+        probeMaxTokens: 4,
+        probeTemperature: 0,
+        degradedRetryAttempts: 2,
+        failedRetryAttempts: 1,
+        modelStatusUpScoreThreshold: 60,
+        modelStatusDegradedScoreThreshold: 30,
+      },
+      apiKeyConfigured: false,
+      apiKeyMasked: null,
+      upstreams: [],
+    };
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+
+      if (url.includes("/api/admin/session")) {
+        return new Response(JSON.stringify({ authenticated: true, username: "admin" }), { status: 200 });
+      }
+
+      if (url.includes("/api/admin/settings")) {
+        return new Response(JSON.stringify(settingsResponse), { status: 200 });
+      }
+
+      if (url.includes("/api/admin/dashboard")) {
+        return new Response(JSON.stringify({
+          range: "24h",
+          from: new Date(Date.now() - 86_400_000).toISOString(),
+          to: new Date().toISOString(),
+          nextProbeAt: null,
+          siteTitle: "Model Status",
+          siteSubtitle: "Model API Monitoring Panel",
+          showSummaryCards: false,
+          summary: {
+            totalModels: 0,
+            availableModels: 0,
+            degradedModels: 0,
+            errorModels: 0,
+            availabilityPercentage: 0,
+          },
+          models: [],
+          upstreams: [],
+          recentProbes: [],
+        }), { status: 200 });
+      }
+
+      if (url.includes("/api/admin/account") && method === "PUT") {
+        return new Response(JSON.stringify({ authenticated: true, username: "operator" }), { status: 200 });
+      }
+
+      return new Response(JSON.stringify({ error: "unexpected" }), { status: 400 });
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<AdminPanel />);
+
+    const accountHeading = await screen.findByText("Account Security");
+    const accountCard = accountHeading.closest("section");
+    expect(accountCard).not.toBeNull();
+
+    const accountQueries = within(accountCard as HTMLElement);
+    await user.type(accountQueries.getByLabelText("Current Password"), "password123");
+    await user.type(accountQueries.getByLabelText("New Password"), "new-password-123");
+    await user.click(accountQueries.getAllByRole("button", { name: "Save Account" })[0]);
+
+    expect(await screen.findByText("Account updated")).toBeInTheDocument();
+    const accountCall = fetchMock.mock.calls.find(([input, init]) => String(input).includes("/api/admin/account") && (init?.method ?? "GET") === "PUT");
+    expect(accountCall).toBeDefined();
+    expect(accountCall?.[1]?.body).toBe(JSON.stringify({
+      currentPassword: "password123",
+      newPassword: "new-password-123",
+    }));
   });
 });

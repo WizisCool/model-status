@@ -7,6 +7,7 @@ const SETTING_KEYS = {
   bootstrapInitialized: "BOOTSTRAP_INITIALIZED",
   siteTitle: "SITE_TITLE",
   siteSubtitle: "SITE_SUBTITLE",
+  showSummaryCards: "SHOW_SUMMARY_CARDS",
   probeIntervalMs: "PROBE_INTERVAL_MS",
   catalogSyncIntervalMs: "CATALOG_SYNC_INTERVAL_MS",
   probeTimeoutMs: "PROBE_TIMEOUT_MS",
@@ -62,6 +63,7 @@ function defaultAdminSettings(): AdminSettings {
   return {
     siteTitle: "Model Status",
     siteSubtitle: "Model API Monitoring Panel",
+    showSummaryCards: true,
     probeIntervalMs: 5 * 60 * 1000,
     catalogSyncIntervalMs: 15 * 60 * 1000,
     probeTimeoutMs: 20_000,
@@ -82,6 +84,7 @@ function readAdminSettings(db: DbClient): AdminSettings {
   return {
     siteTitle: settings[SETTING_KEYS.siteTitle] ?? defaults.siteTitle,
     siteSubtitle: settings[SETTING_KEYS.siteSubtitle] ?? defaults.siteSubtitle,
+    showSummaryCards: settings[SETTING_KEYS.showSummaryCards] !== "0",
     probeIntervalMs: clampNumber(Number(settings[SETTING_KEYS.probeIntervalMs] ?? defaults.probeIntervalMs), 30_000, 86_400_000),
     catalogSyncIntervalMs: clampNumber(Number(settings[SETTING_KEYS.catalogSyncIntervalMs] ?? defaults.catalogSyncIntervalMs), 60_000, 86_400_000),
     probeTimeoutMs: clampNumber(Number(settings[SETTING_KEYS.probeTimeoutMs] ?? defaults.probeTimeoutMs), 2_000, 120_000),
@@ -103,6 +106,7 @@ export function ensureRuntimeSettings(db: DbClient, _config: AppConfig): void {
   for (const [key, value] of Object.entries({
     [SETTING_KEYS.siteTitle]: defaults.siteTitle,
     [SETTING_KEYS.siteSubtitle]: defaults.siteSubtitle,
+    [SETTING_KEYS.showSummaryCards]: defaults.showSummaryCards ? "1" : "0",
     [SETTING_KEYS.probeIntervalMs]: String(defaults.probeIntervalMs),
     [SETTING_KEYS.catalogSyncIntervalMs]: String(defaults.catalogSyncIntervalMs),
     [SETTING_KEYS.probeTimeoutMs]: String(defaults.probeTimeoutMs),
@@ -167,6 +171,7 @@ export function getAdminSettingsResponse(db: DbClient, config: AppConfig): Admin
     settings: {
       siteTitle: runtime.siteTitle,
       siteSubtitle: runtime.siteSubtitle,
+      showSummaryCards: runtime.showSummaryCards,
       probeIntervalMs: runtime.probeIntervalMs,
       catalogSyncIntervalMs: runtime.catalogSyncIntervalMs,
       probeTimeoutMs: runtime.probeTimeoutMs,
@@ -200,11 +205,13 @@ export function updateAdminSettings(db: DbClient, config: AppConfig, updates: Up
     ...updates,
     siteTitle: typeof updates.siteTitle === "string" ? updates.siteTitle.trim() || current.siteTitle : current.siteTitle,
     siteSubtitle: typeof updates.siteSubtitle === "string" ? updates.siteSubtitle.trim() : current.siteSubtitle,
+    showSummaryCards: typeof updates.showSummaryCards === "boolean" ? updates.showSummaryCards : current.showSummaryCards,
   };
   const nowIso = new Date().toISOString();
 
   db.setSetting(SETTING_KEYS.siteTitle, next.siteTitle, nowIso);
   db.setSetting(SETTING_KEYS.siteSubtitle, next.siteSubtitle, nowIso);
+  db.setSetting(SETTING_KEYS.showSummaryCards, next.showSummaryCards ? "1" : "0", nowIso);
   db.setSetting(SETTING_KEYS.probeIntervalMs, String(clampNumber(next.probeIntervalMs, 30_000, 86_400_000)), nowIso);
   db.setSetting(SETTING_KEYS.catalogSyncIntervalMs, String(clampNumber(next.catalogSyncIntervalMs, 60_000, 86_400_000)), nowIso);
   db.setSetting(SETTING_KEYS.probeTimeoutMs, String(clampNumber(next.probeTimeoutMs, 2_000, 120_000)), nowIso);

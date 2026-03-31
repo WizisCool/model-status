@@ -106,6 +106,7 @@ export type DashboardResponse = {
   nextProbeAt: string | null;
   siteTitle: string;
   siteSubtitle: string;
+  showSummaryCards: boolean;
   summary: {
     totalModels: number;
     availableModels: number;
@@ -134,6 +135,7 @@ export type AdminDashboardResponse = {
   nextProbeAt: string | null;
   siteTitle: string;
   siteSubtitle: string;
+  showSummaryCards: boolean;
   summary: DashboardResponse["summary"];
   models: ModelSummary[];
   upstreams: UpstreamDashboardSummary[];
@@ -148,6 +150,7 @@ export type AdminSessionResponse = {
 export type AdminSettings = {
   siteTitle: string;
   siteSubtitle: string;
+  showSummaryCards: boolean;
   probeIntervalMs: number;
   catalogSyncIntervalMs: number;
   probeTimeoutMs: number;

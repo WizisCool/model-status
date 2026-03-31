@@ -218,14 +218,14 @@ function StatCard({
   detail?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-surface/70 p-4 shadow-sm shadow-black/5">
+    <div className="rounded-[24px] border border-border bg-background/72 p-4 shadow-sm shadow-black/5 transition-colors">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="text-[11px] font-mono uppercase tracking-[0.22em] text-textMuted">{label}</div>
           <div className={`mt-3 text-3xl font-mono ${valueColor}`}>{value}</div>
           {detail ? <div className="mt-2 text-xs text-textMuted">{detail}</div> : null}
         </div>
-        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border border-border bg-background/80 text-textSecondary">
+        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border border-border bg-surface/80 text-textSecondary">
           {icon}
         </div>
       </div>
@@ -279,7 +279,7 @@ function ModelCard({
       <div className="mt-5 grid grid-cols-2 gap-x-3 gap-y-4 text-sm">
         <div>
           <div className="mb-1 text-[11px] font-mono uppercase tracking-[0.18em] text-textMuted">{copy.successRate}</div>
-          <div className="font-mono text-textPrimary">{`${model.availabilityPercentage.toFixed(1)}% (${model.successes}/${model.probes})`}</div>
+          <div className="font-mono text-textPrimary">{`${model.availabilityPercentage.toFixed(1)}%`}</div>
         </div>
         <div>
           <div className="mb-1 text-[11px] font-mono uppercase tracking-[0.18em] text-textMuted">{copy.totalLatency}</div>
@@ -335,7 +335,7 @@ function ModelRow({
       </td>
       <td className="min-w-[220px] px-6 py-4">
         <div className="space-y-2">
-          <div className="text-xs font-mono text-textMuted">{`${copy.successRate}: ${model.availabilityPercentage.toFixed(1)}% (${model.successes}/${model.probes})`}</div>
+          <div className="text-xs font-mono text-textMuted">{`${copy.successRate}: ${model.availabilityPercentage.toFixed(1)}%`}</div>
           <StatusBars statuses={model.recentStatuses} range={range} copy={copy} language={language} isProbeCycleRunning={isProbeCycleRunning} />
         </div>
       </td>
@@ -602,18 +602,32 @@ export function PublicDashboard() {
           </div>
         ) : data ? (
           <div className="space-y-6 animate-in fade-in duration-500">
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <StatCard label={copy.totalModels} value={data.summary.totalModels} icon={<Server size={18} />} />
-              <StatCard label={copy.successes} value={data.summary.availableModels} icon={<CheckCircle2 size={18} />} valueColor="text-success" detail={`${healthyRate.toFixed(1)}%`} />
-              <StatCard label={copy.degraded} value={data.summary.degradedModels} icon={<Activity size={18} />} valueColor={data.summary.degradedModels > 0 ? "text-warning" : "text-textPrimary"} />
-              <StatCard label={copy.failures} value={data.summary.errorModels} icon={<XCircle size={18} />} valueColor={data.summary.errorModels > 0 ? "text-error" : "text-textPrimary"} />
-            </div>
+            {data.showSummaryCards ? (
+              <section className="glass-panel rounded-[28px] border border-border p-5 shadow-lg shadow-black/5">
+                <div className="mb-4 flex items-center justify-between gap-4 border-b border-border pb-3">
+                  <div>
+                    <h2 className="text-lg font-mono text-textPrimary">{language === "zh-CN" ? "概览" : "Overview"}</h2>
+                    <p className="mt-1 text-xs font-mono uppercase tracking-[0.18em] text-textMuted">{rangeSuccessLabel}</p>
+                  </div>
+                  <div className="inline-flex items-center gap-2 rounded-full border border-border bg-background/70 px-3 py-1 text-xs font-mono text-textSecondary">
+                    <Indicator tone={dashboardTone} />
+                    <span>{healthyRate.toFixed(1)}%</span>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <StatCard label={copy.totalModels} value={data.summary.totalModels} icon={<Server size={18} />} />
+                  <StatCard label={copy.successes} value={data.summary.availableModels} icon={<CheckCircle2 size={18} />} valueColor="text-success" detail={`${healthyRate.toFixed(1)}%`} />
+                  <StatCard label={copy.degraded} value={data.summary.degradedModels} icon={<Activity size={18} />} valueColor={data.summary.degradedModels > 0 ? "text-warning" : "text-textPrimary"} />
+                  <StatCard label={copy.failures} value={data.summary.errorModels} icon={<XCircle size={18} />} valueColor={data.summary.errorModels > 0 ? "text-error" : "text-textPrimary"} />
+                </div>
+              </section>
+            ) : null}
 
             <section className="glass-panel rounded-[28px] border border-border p-6 shadow-lg shadow-black/5">
               <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
                 <div>
                   <h2 className="text-2xl font-mono text-textPrimary">{copy.monitoredModels}</h2>
-                  <p className="mt-1 text-sm text-textSecondary">{rangeSuccessLabel}</p>
                 </div>
               </div>
 
@@ -686,10 +700,7 @@ export function PublicDashboard() {
               <title>GitHub</title>
               <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" />
             </svg>
-            Powered by model status
-          </a>
-          <a href={PROJECT_REPOSITORY_URL} target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-textPrimary">
-            {copy.githubLink}
+            Powered by Model Status
           </a>
         </footer>
       </div>

@@ -6,7 +6,7 @@ export type SettingFieldConfig = {
   key: keyof AdminSettings;
   label: string;
   description: string;
-  type: "text" | "number" | "duration";
+  type: "text" | "number" | "duration" | "boolean";
   step?: string;
 };
 
@@ -29,6 +29,7 @@ export function getAdminSettingGroups(language: Language): SettingGroupConfig[] 
         fields: [
           { key: "siteTitle", label: "\u7ad9\u70b9\u6807\u9898", description: "\u516c\u5171\u770b\u677f\u4e0e\u540e\u53f0\u5934\u90e8\u663e\u793a\u7684\u4e3b\u6807\u9898\u3002", type: "text" },
           { key: "siteSubtitle", label: "\u7ad9\u70b9\u526f\u6807\u9898", description: "\u4e3b\u6807\u9898\u4e0b\u65b9\u7684\u8bf4\u660e\u6587\u6848\u3002", type: "text" },
+          { key: "showSummaryCards", label: "\u663e\u793a\u9876\u90e8\u6458\u8981\u5361\u7247", description: "\u63a7\u5236\u516c\u5171\u770b\u677f\u9996\u5c4f\u662f\u5426\u663e\u793a\u7edf\u8ba1\u5361\u7247\u3002", type: "boolean" },
         ],
       },
       {
@@ -81,6 +82,7 @@ export function getAdminSettingGroups(language: Language): SettingGroupConfig[] 
       fields: [
         { key: "siteTitle", label: "Site Title", description: "Primary title shown across public and admin surfaces.", type: "text" },
         { key: "siteSubtitle", label: "Site Subtitle", description: "Secondary copy shown beneath the title.", type: "text" },
+        { key: "showSummaryCards", label: "Show Summary Cards", description: "Toggle the public dashboard KPI cards beneath the hero.", type: "boolean" },
       ],
     },
     {

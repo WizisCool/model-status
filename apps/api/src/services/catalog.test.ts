@@ -34,6 +34,7 @@ describe("catalog service", () => {
   const settings: RuntimeSettings = {
     siteTitle: "Model Status",
     siteSubtitle: "subtitle",
+    showSummaryCards: true,
     probeIntervalMs: 1000,
     catalogSyncIntervalMs: 1000,
     probeTimeoutMs: 1000,

@@ -38,6 +38,7 @@ describe("AdminPanel", () => {
       settings: {
         siteTitle: "Model Status",
         siteSubtitle: "Model API Monitoring Panel",
+        showSummaryCards: true,
         probeIntervalMs: 300000,
         catalogSyncIntervalMs: 900000,
         probeTimeoutMs: 20000,
@@ -72,6 +73,7 @@ describe("AdminPanel", () => {
       nextProbeAt: null,
       siteTitle: "Model Status",
       siteSubtitle: "Model API Monitoring Panel",
+      showSummaryCards: true,
       summary: {
         totalModels: 0,
         availableModels: 0,
@@ -133,6 +135,7 @@ describe("AdminPanel", () => {
       settings: {
         siteTitle: "Model Status",
         siteSubtitle: "Model API Monitoring Panel",
+        showSummaryCards: false,
         probeIntervalMs: 300000,
         catalogSyncIntervalMs: 900000,
         probeTimeoutMs: 20000,
@@ -170,6 +173,7 @@ describe("AdminPanel", () => {
             nextProbeAt: null,
             siteTitle: "Model Status",
             siteSubtitle: "Model API Monitoring Panel",
+            showSummaryCards: false,
             summary: {
               totalModels: 0,
               availableModels: 0,

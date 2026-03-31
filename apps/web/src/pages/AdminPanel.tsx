@@ -781,6 +781,28 @@ export function AdminPanel() {
                                     ))}
                                   </select>
                                 </div>
+                              ) : field.type === "boolean" ? (
+                                <label className="flex items-center justify-between gap-4 rounded-xl border border-border bg-surface/80 px-3 py-3 text-textPrimary">
+                                  <span className="text-sm">{value ? (language === "zh-CN" ? "开启" : "On") : (language === "zh-CN" ? "关闭" : "Off")}</span>
+                                  <input
+                                    type="checkbox"
+                                    checked={Boolean(value)}
+                                    onChange={(event) =>
+                                      setSettings((current) =>
+                                        current
+                                          ? {
+                                              ...current,
+                                              settings: {
+                                                ...current.settings,
+                                                [field.key]: event.target.checked,
+                                              },
+                                            }
+                                          : current,
+                                      )
+                                    }
+                                    className="h-4 w-4 rounded border-border bg-background text-accent focus:ring-accent"
+                                  />
+                                </label>
                               ) : (
                                 <input
                                   type={field.type}

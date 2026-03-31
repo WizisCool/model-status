@@ -90,6 +90,7 @@ describe("dashboard service", () => {
     const config = {
       siteTitle: "Model Status",
       siteSubtitle: "subtitle",
+      showSummaryCards: true,
       probeIntervalMs: 120000,
       modelStatusUpScoreThreshold: 60,
       modelStatusDegradedScoreThreshold: 30,
@@ -103,6 +104,7 @@ describe("dashboard service", () => {
     expect(result.summary.degradedModels).toBe(0);
     expect(result.summary.errorModels).toBe(1);
     expect(result.summary.availabilityPercentage).toBe(50);
+    expect(result.showSummaryCards).toBe(true);
     expect(result.upstreams).toHaveLength(1);
     expect(result.nextProbeAt).toBeNull();
     expect(result.models).toHaveLength(1);
@@ -321,6 +323,7 @@ describe("dashboard service", () => {
     const config = {
       siteTitle: "Model Status",
       siteSubtitle: "subtitle",
+      showSummaryCards: true,
       probeIntervalMs: 300000,
       modelStatusUpScoreThreshold: 60,
       modelStatusDegradedScoreThreshold: 30,
@@ -390,6 +393,7 @@ describe("dashboard service", () => {
     const config = {
       siteTitle: "Model Status",
       siteSubtitle: "subtitle",
+      showSummaryCards: true,
       probeIntervalMs: 300000,
       modelStatusUpScoreThreshold: 60,
       modelStatusDegradedScoreThreshold: 30,
@@ -465,6 +469,7 @@ describe("dashboard service", () => {
     const config = {
       siteTitle: "Model Status",
       siteSubtitle: "subtitle",
+      showSummaryCards: true,
       probeIntervalMs: 300000,
       modelStatusUpScoreThreshold: 60,
       modelStatusDegradedScoreThreshold: 30,

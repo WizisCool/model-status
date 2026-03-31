@@ -66,6 +66,7 @@ export const translations = {
     apiBaseUrl: "API Base URL",
     modelsUrl: "Models URL",
     githubLink: "Visit Site Repository",
+    overview: "Overview",
   },
   "zh-CN": {
     title: "模型状态",

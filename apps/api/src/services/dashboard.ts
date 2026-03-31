@@ -10,6 +10,7 @@ type DashboardScoreConfig = {
 type DashboardMetaConfig = DashboardScoreConfig & {
   siteTitle: string;
   siteSubtitle: string;
+  showSummaryCards: boolean;
   probeIntervalMs: number;
 };
 
@@ -230,6 +231,7 @@ export function getDashboardData(
     nextProbeAt: null,
     siteTitle: config.siteTitle,
     siteSubtitle: config.siteSubtitle,
+    showSummaryCards: config.showSummaryCards,
     summary: {
       totalModels: models.length,
       availableModels,
@@ -257,6 +259,7 @@ export function toPublicDashboardResponse(dashboard: AdminDashboardResponse): Da
     nextProbeAt: dashboard.nextProbeAt,
     siteTitle: dashboard.siteTitle,
     siteSubtitle: dashboard.siteSubtitle,
+    showSummaryCards: dashboard.showSummaryCards,
     summary: {
       totalModels: visibleModels.length,
       availableModels,

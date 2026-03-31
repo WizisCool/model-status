@@ -5,11 +5,10 @@
       alt="Model Status Socialify"
     />
   </p>
+  <img src="apps/web/public/project-icon.svg" width="88" alt="Model Status 图标" />
   <h1>Model Status</h1>
   <p><strong>一个OpenAI 兼容模型接口的模型状态监控面板。</strong></p>
 </div>
-
-<img src="apps/web/public/project-icon.svg" width="88" alt="Model Status 图标" />
 
 ## 项目简介
 

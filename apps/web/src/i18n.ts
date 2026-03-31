@@ -72,7 +72,7 @@ export const translations = {
     overview: "Overview",
   },
   "zh-CN": {
-    title: "模型状态",
+    title: "Model Status",
     subtitle: "模型 API 监控面板",
     schedulerIdle: "调度器空闲",
     refreshing: "正在刷新调度...",

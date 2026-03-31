@@ -56,19 +56,6 @@ function getStatusColor(level: DisplayProbeStatus["displayLevel"]): string {
   }
 }
 
-function getStatusChipClasses(level: ProbeStatusSample["level"]): string {
-  switch (level) {
-    case "up":
-      return "border-success/25 bg-success/10 text-success";
-    case "degraded":
-      return "border-warning/25 bg-warning/10 text-warning";
-    case "down":
-      return "border-error/25 bg-error/10 text-error";
-    default:
-      return "border-border bg-background/70 text-textMuted";
-  }
-}
-
 function getStatusOpacity(status: DisplayProbeStatus): string {
   if (status.level === "empty") {
     return "opacity-40";
@@ -250,21 +237,6 @@ function getModelLabel(model: ModelSummary): string {
   return model.displayName?.trim() || model.model;
 }
 
-function createLatestStatusSample(model: ModelSummary): DisplayProbeStatus {
-  return {
-    id: `${model.upstreamId}-${model.model}-latest`,
-    startedAt: model.lastProbeAt ?? "",
-    endedAt: model.lastProbeAt ?? "",
-    score: null,
-    level: model.latestStatus,
-    probeCount: 0,
-    successCount: 0,
-    avgConnectivityLatencyMs: null,
-    avgTotalLatencyMs: null,
-    displayLevel: model.latestStatus,
-  };
-}
-
 function ModelCard({
   model,
   range,
@@ -283,23 +255,17 @@ function ModelCard({
   const populatedBars = model.recentStatuses.filter((status) => status.level !== "empty").length;
   const displayLabel = getModelLabel(model);
   const showModelId = displayLabel !== model.model;
-  const latestStatus = createLatestStatusSample(model);
 
   return (
     <div className="relative overflow-hidden rounded-[24px] border border-border bg-surface/72 p-5 shadow-sm shadow-black/5 transition-colors hover:border-textSecondary">
       <div className={`absolute inset-y-0 left-0 w-1 ${isHealthy ? "bg-success" : isDegraded ? "bg-warning" : model.latestStatus === "down" ? "bg-error" : "bg-border"}`} />
 
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0 pr-4">
-          <h3 className="flex items-center gap-2 truncate font-mono text-[1rem] font-semibold leading-tight text-textPrimary" title={displayLabel}>
-            <ModelIcon icon={model.icon} modelId={model.model} ownedBy={model.ownedBy} size={18} className="text-textPrimary" />
-            <span className="truncate">{displayLabel}</span>
-          </h3>
-          {showModelId ? <div className="mt-1 truncate font-mono text-xs text-textMuted">{model.model}</div> : null}
-        </div>
-        <div className={`flex-shrink-0 rounded-full border px-3 py-1 text-[11px] font-mono uppercase tracking-[0.18em] ${getStatusChipClasses(model.latestStatus)}`}>
-          {getStatusLabel(latestStatus, copy)}
-        </div>
+      <div className="min-w-0 pr-4">
+        <h3 className="flex items-center gap-2 truncate font-mono text-[1rem] font-semibold leading-tight text-textPrimary" title={displayLabel}>
+          <ModelIcon icon={model.icon} modelId={model.model} ownedBy={model.ownedBy} size={18} className="text-textPrimary" />
+          <span className="truncate">{displayLabel}</span>
+        </h3>
+        {showModelId ? <div className="mt-1 truncate font-mono text-xs text-textMuted">{model.model}</div> : null}
       </div>
 
       <div className="mt-5 space-y-2">
@@ -355,7 +321,6 @@ function ModelRow({
 }) {
   const displayLabel = getModelLabel(model);
   const showModelId = displayLabel !== model.model;
-  const latestStatus = createLatestStatusSample(model);
 
   return (
     <tr className="transition-colors hover:bg-surfaceHover">
@@ -370,9 +335,6 @@ function ModelRow({
       </td>
       <td className="min-w-[220px] px-6 py-4">
         <div className="space-y-2">
-          <div className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-mono uppercase tracking-[0.18em] ${getStatusChipClasses(model.latestStatus)}`}>
-            {getStatusLabel(latestStatus, copy)}
-          </div>
           <div className="text-xs font-mono text-textMuted">{`${copy.successRate}: ${model.availabilityPercentage.toFixed(1)}% (${model.successes}/${model.probes})`}</div>
           <StatusBars statuses={model.recentStatuses} range={range} copy={copy} language={language} isProbeCycleRunning={isProbeCycleRunning} />
         </div>

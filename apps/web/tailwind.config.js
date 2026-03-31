@@ -21,10 +21,10 @@ export default {
         error: 'var(--error)',
       },
       fontFamily: {
-        mono: ['"Source Han Sans SC"', '"Noto Sans SC"', '"Fira Sans"', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
-        sans: ['"Source Han Sans SC"', '"Noto Sans SC"', '"Fira Sans"', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
-        serif: ['"Noto Serif SC"', '"Songti SC"', '"STSong"', '"Newsreader"', 'ui-serif', 'Georgia', 'serif'],
-        display: ['"Noto Serif SC"', '"Songti SC"', '"STSong"', '"Newsreader"', 'ui-serif', 'Georgia', 'serif'],
+        mono: ['"Noto Sans SC"', '"PingFang SC"', '"Hiragino Sans GB"', '"Microsoft YaHei"', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        sans: ['"Noto Sans SC"', '"PingFang SC"', '"Hiragino Sans GB"', '"Microsoft YaHei"', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        serif: ['"Noto Serif SC"', '"Songti SC"', '"STSong"', '"Source Han Serif SC"', 'ui-serif', 'Georgia', 'serif'],
+        display: ['"Noto Serif SC"', '"Songti SC"', '"STSong"', '"Source Han Serif SC"', 'ui-serif', 'Georgia', 'serif'],
       }
     },
   },

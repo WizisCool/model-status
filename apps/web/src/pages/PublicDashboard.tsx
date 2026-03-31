@@ -212,7 +212,7 @@ function ModelCard({ model, range, copy, language, isProbeCycleRunning }: { mode
 
       <div className="flex justify-between items-start mb-6 gap-4">
         <div className="min-w-0 pr-4">
-          <h3 className="font-display font-medium text-[1.32rem] truncate text-textPrimary flex items-center gap-2 leading-tight" title={displayLabel}>
+          <h3 className="font-sans font-semibold text-[1.1rem] truncate text-textPrimary flex items-center gap-2 leading-tight" title={displayLabel}>
             <ModelIcon icon={model.icon} modelId={model.model} ownedBy={model.ownedBy} size={18} className="text-textPrimary" />
             <span className="truncate">{displayLabel}</span>
           </h3>
@@ -277,7 +277,7 @@ function ModelRow({ model, range, copy, language, isProbeCycleRunning }: { model
         <div className="flex items-center gap-3">
           <ModelIcon icon={model.icon} modelId={model.model} ownedBy={model.ownedBy} size={18} className="text-textPrimary" />
           <div className="min-w-0">
-            <span className="font-display truncate max-w-xs block text-base leading-tight" title={displayLabel}>{displayLabel}</span>
+            <span className="font-sans truncate max-w-xs block text-[0.98rem] font-semibold leading-tight" title={displayLabel}>{displayLabel}</span>
             {showModelId ? <span className="mt-1 block truncate text-xs text-textMuted">{model.model}</span> : null}
           </div>
         </div>

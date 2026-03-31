@@ -123,7 +123,7 @@ export function AdminPanel() {
   const adminCopy = useMemo(() => getAdminCopy(language), [language]);
   const settingGroups = useMemo(() => getAdminSettingGroups(language), [language]);
   const settingFields = useMemo(() => settingGroups.flatMap((group) => group.fields), [settingGroups]);
-  const requestFailedCopy = language === "zh-CN" ? "请求失败" : "Request failed";
+  const requestFailedCopy = copy.requestFailed;
 
   const dismissNotification = useCallback((id: number) => {
     const timer = toastTimersRef.current.get(id);
@@ -299,7 +299,7 @@ export function AdminPanel() {
           ...current.upstreams,
           {
             id: "",
-            name: "New Upstream",
+            name: adminCopy.newUpstream,
             group: "default",
             apiBaseUrl: "https://api.example.com/v1",
             modelsUrl: "https://api.example.com/v1/models",
@@ -583,10 +583,10 @@ export function AdminPanel() {
                       </div>
 
                       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                        <div className="rounded-2xl border border-border bg-surface/70 p-4"><div className="text-[11px] font-mono uppercase tracking-[0.22em] text-textMuted">Total Models</div><div className="mt-2 text-3xl font-mono text-textPrimary">{dashboard.summary.totalModels}</div></div>
-                        <div className="rounded-2xl border border-border bg-surface/70 p-4"><div className="text-[11px] font-mono uppercase tracking-[0.22em] text-textMuted">Available</div><div className="mt-2 text-3xl font-mono text-success">{dashboard.summary.availableModels}</div></div>
-                        <div className="rounded-2xl border border-border bg-surface/70 p-4"><div className="text-[11px] font-mono uppercase tracking-[0.22em] text-textMuted">Degraded</div><div className="mt-2 text-3xl font-mono text-warning">{dashboard.summary.degradedModels}</div></div>
-                        <div className="rounded-2xl border border-border bg-surface/70 p-4"><div className="text-[11px] font-mono uppercase tracking-[0.22em] text-textMuted">Error</div><div className="mt-2 text-3xl font-mono text-error">{dashboard.summary.errorModels}</div></div>
+                        <div className="rounded-2xl border border-border bg-surface/70 p-4"><div className="text-[11px] font-mono uppercase tracking-[0.22em] text-textMuted">{adminCopy.totalModels}</div><div className="mt-2 text-3xl font-mono text-textPrimary">{dashboard.summary.totalModels}</div></div>
+                        <div className="rounded-2xl border border-border bg-surface/70 p-4"><div className="text-[11px] font-mono uppercase tracking-[0.22em] text-textMuted">{adminCopy.available}</div><div className="mt-2 text-3xl font-mono text-success">{dashboard.summary.availableModels}</div></div>
+                        <div className="rounded-2xl border border-border bg-surface/70 p-4"><div className="text-[11px] font-mono uppercase tracking-[0.22em] text-textMuted">{adminCopy.degraded}</div><div className="mt-2 text-3xl font-mono text-warning">{dashboard.summary.degradedModels}</div></div>
+                        <div className="rounded-2xl border border-border bg-surface/70 p-4"><div className="text-[11px] font-mono uppercase tracking-[0.22em] text-textMuted">{adminCopy.error}</div><div className="mt-2 text-3xl font-mono text-error">{dashboard.summary.errorModels}</div></div>
                       </div>
 
                       <div className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr),minmax(0,1.1fr)]">
@@ -670,7 +670,7 @@ export function AdminPanel() {
                     <div key={upstream.id || index} className="rounded-2xl border border-border bg-surface/60 p-5 space-y-4">
                       <div className="flex items-start justify-between gap-4">
                         <div>
-                          <h3 className="font-mono text-lg text-textPrimary">{upstream.name || "Unnamed Upstream"}</h3>
+                          <h3 className="font-mono text-lg text-textPrimary">{upstream.name || adminCopy.unnamedUpstream}</h3>
                           <div className="mt-1 text-xs text-textMuted">{upstream.group}</div>
                         </div>
                         <button type="button" onClick={() => removeUpstream(index)} className="text-xs font-mono text-error hover:underline">{copy.remove}</button>
@@ -681,7 +681,7 @@ export function AdminPanel() {
                         <label className="space-y-1 text-sm text-textSecondary"><span className="font-mono text-xs uppercase">{copy.group}</span><input value={upstream.group} onChange={(event) => handleUpstreamChange(index, "group", event.target.value)} className="w-full rounded-xl border border-border bg-background/70 px-3 py-2 text-textPrimary" /></label>
                         <label className="space-y-1 text-sm text-textSecondary"><span className="font-mono text-xs uppercase">{copy.apiBaseUrl}</span><input value={upstream.apiBaseUrl} onChange={(event) => handleUpstreamChange(index, "apiBaseUrl", event.target.value)} className="w-full rounded-xl border border-border bg-background/70 px-3 py-2 text-textPrimary" /></label>
                         <label className="space-y-1 text-sm text-textSecondary"><span className="font-mono text-xs uppercase">{copy.modelsUrl}</span><input value={upstream.modelsUrl} onChange={(event) => handleUpstreamChange(index, "modelsUrl", event.target.value)} className="w-full rounded-xl border border-border bg-background/70 px-3 py-2 text-textPrimary" /></label>
-                        <label className="space-y-1 text-sm text-textSecondary"><span className="font-mono text-xs uppercase">API Key (Masked: {upstream.apiKeyMasked ?? "None"})</span><input value={upstream.newApiKey || ""} onChange={(event) => handleUpstreamChange(index, "newApiKey", event.target.value)} placeholder={copy.apiKeyReplace} className="w-full rounded-xl border border-border bg-background/70 px-3 py-2 text-textPrimary" /></label>
+                        <label className="space-y-1 text-sm text-textSecondary"><span className="font-mono text-xs uppercase">{`${adminCopy.apiKeyMaskedLabel} (${upstream.apiKeyMasked ?? adminCopy.none})`}</span><input value={upstream.newApiKey || ""} onChange={(event) => handleUpstreamChange(index, "newApiKey", event.target.value)} placeholder={copy.apiKeyReplace} className="w-full rounded-xl border border-border bg-background/70 px-3 py-2 text-textPrimary" /></label>
                         <label className="flex items-center gap-2 self-end rounded-xl border border-border bg-background/70 px-3 py-3 text-sm text-textSecondary"><input type="checkbox" checked={upstream.isActive} onChange={(event) => handleUpstreamChange(index, "isActive", event.target.checked)} className="rounded border-border bg-surface text-accent focus:ring-accent" /><span>{copy.activeLabel}</span></label>
                       </div>
                     </div>
@@ -771,7 +771,7 @@ export function AdminPanel() {
                                 </div>
                               ) : field.type === "boolean" ? (
                                 <label className="flex items-center justify-between gap-4 rounded-xl border border-border bg-surface/80 px-3 py-3 text-textPrimary">
-                                  <span className="text-sm">{value ? (language === "zh-CN" ? "开启" : "On") : (language === "zh-CN" ? "关闭" : "Off")}</span>
+                                  <span className="text-sm">{value ? adminCopy.on : adminCopy.off}</span>
                                   <input
                                     type="checkbox"
                                     checked={Boolean(value)}

@@ -11,11 +11,14 @@ export const translations = {
     successRate: "Success Rate",
     successes: "Available Models",
     failures: "Error Models",
-    monitoredModels: "Monitored Models",
+    monitoredModels: "Monitored List",
     noModelsFound: "No models found",
     syncToBegin: "Sync models from the catalog to begin monitoring.",
     syncModels: "Sync Models",
     connectionError: "Connection Error",
+    requestFailed: "Request failed",
+    fetchDashboardFailed: "Failed to fetch dashboard data",
+    unknownError: "Unknown error",
     retry: "Retry",
     establishingConnection: "Establishing connection...",
     model: "Model",
@@ -78,18 +81,21 @@ export const translations = {
     successRate: "成功率",
     successes: "可用模型",
     failures: "错误模型",
-    monitoredModels: "监控中的模型",
+    monitoredModels: "监控列表",
     noModelsFound: "未发现模型",
     syncToBegin: "先同步模型目录，再开始监控。",
     syncModels: "同步模型",
     connectionError: "连接错误",
+    requestFailed: "请求失败",
+    fetchDashboardFailed: "获取仪表盘数据失败",
+    unknownError: "未知错误",
     retry: "重试",
     establishingConnection: "正在建立连接...",
     model: "模型",
     status: "状态",
-    connectivity: "连通时延",
+    connectivity: "连通延迟",
     avgTotalLatency: "平均总耗时",
-    ttft: "首字时延",
+    ttft: "首字延时",
     lastProbe: "上次探测时间",
     recentStatus: "近期状态",
     totalLatency: "总耗时",
@@ -133,11 +139,14 @@ export const translations = {
     apiBaseUrl: "API 基础地址",
     modelsUrl: "模型列表地址",
     githubLink: "访问站点仓库",
+    overview: "概览",
   },
 };
 
 export function normalizeLanguage(value: string | null): Language {
-  if (value === "zh" || value === "zh-CN") {
+  const candidate = value ?? navigator.language ?? navigator.languages?.[0] ?? "en";
+
+  if (candidate === "zh" || candidate === "zh-CN" || candidate.toLowerCase().startsWith("zh-")) {
     return "zh-CN";
   }
 

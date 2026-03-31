@@ -39,7 +39,7 @@ export function getInitialViewMode(): ViewMode {
     return storedView;
   }
 
-  return "grid";
+  return "list";
 }
 
 export function syncUrlState(range: DashboardRange, view: ViewMode): void {

@@ -413,17 +413,17 @@ export function PublicDashboard() {
       setError(null);
       const response = await fetch(`/api/dashboard?range=${range}`);
       if (!response.ok) {
-        throw new Error(language === "zh-CN" ? "鑾峰彇浠〃鐩樻暟鎹け璐?" : "Failed to fetch dashboard data");
+        throw new Error(copy.fetchDashboardFailed);
       }
 
       const json = (await response.json()) as DashboardResponse;
       setData(json);
     } catch (err) {
-      setError(err instanceof Error ? err.message : language === "zh-CN" ? "鏈煡閿欒" : "Unknown error");
+      setError(err instanceof Error ? err.message : copy.unknownError);
     } finally {
       setLoading(false);
     }
-  }, [language, range]);
+  }, [copy.fetchDashboardFailed, copy.unknownError, range]);
 
   useEffect(() => {
     localStorage.setItem("lang", language);
@@ -681,7 +681,7 @@ export function PublicDashboard() {
               <section className="glass-panel rounded-[28px] border border-border p-5 shadow-lg shadow-black/5">
                 <div className="mb-4 border-b border-border pb-3">
                   <div>
-                    <h2 className="text-lg font-mono text-textPrimary">{language === "zh-CN" ? "概览" : "Overview"}</h2>
+                    <h2 className="text-lg font-mono text-textPrimary">{copy.overview}</h2>
                   </div>
                 </div>
 

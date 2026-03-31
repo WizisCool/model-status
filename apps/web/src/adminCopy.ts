@@ -45,6 +45,12 @@ export type AdminCopy = {
   upstreamsSectionDesc: string;
   runtimeSectionDesc: string;
   modelCountSuffix: string;
+  unnamedUpstream: string;
+  newUpstream: string;
+  none: string;
+  on: string;
+  off: string;
+  apiKeyMaskedLabel: string;
 };
 
 const adminCopyByLanguage: Record<Language, AdminCopy> = {
@@ -93,6 +99,12 @@ const adminCopyByLanguage: Record<Language, AdminCopy> = {
     upstreamsSectionDesc: "Manage upstream routes, grouping, credentials, and activation.",
     runtimeSectionDesc: "Tune sync cadence, concurrency, retries, and score thresholds.",
     modelCountSuffix: "models",
+    unnamedUpstream: "Unnamed Upstream",
+    newUpstream: "New Upstream",
+    none: "None",
+    on: "On",
+    off: "Off",
+    apiKeyMaskedLabel: "API Key",
   },
   "zh-CN": {
     controlSurface: "控制台",
@@ -139,6 +151,12 @@ const adminCopyByLanguage: Record<Language, AdminCopy> = {
     upstreamsSectionDesc: "管理上游地址、分组、密钥与启用状态。",
     runtimeSectionDesc: "调整同步周期、并发数、重试策略与评分阈值。",
     modelCountSuffix: "个模型",
+    unnamedUpstream: "未命名上游",
+    newUpstream: "新上游",
+    none: "无",
+    on: "开启",
+    off: "关闭",
+    apiKeyMaskedLabel: "API Key",
   },
 };
 

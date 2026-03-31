@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: #f8f9fa;
+    --surface: #ffffff;
+    --surfaceHover: #f1f3f5;
+    --border: #e9ecef;
+    --textPrimary: #212529;
+    --textSecondary: #6c757d;
+    --textMuted: #adb5bd;
+    --accent: #e9ecef;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --error: #ef4444;
+    color-scheme: light;
+  }
+
+  .dark {
+    --background: #0a0a0a;
+    --surface: #121212;
+    --surfaceHover: #1c1c1c;
+    --border: #2a2a2a;
+    --textPrimary: #ffffff;
+    --textSecondary: #a0a0a0;
+    --textMuted: #666666;
+    --accent: #262626;
+    color-scheme: dark;
+  }
+  
+  html, body {
+    @apply h-full text-textPrimary selection:bg-surface selection:text-textPrimary transition-colors duration-300;
+    background-color: var(--background);
+  }
+
+  body {
+    background-image: radial-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+  
+  .dark body {
+    background-image: radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  }
+}
+
+@layer utilities {
+  .glass-panel {
+    @apply backdrop-blur-md border border-border shadow-sm;
+    background-color: color-mix(in srgb, var(--surface) 80%, transparent);
+  }
+  
+  .dark .glass-panel {
+    @apply shadow-none;
+  }
+  
+  .glass-button {
+    @apply hover:bg-surfaceHover border border-border transition-colors duration-200 shadow-sm;
+    background-color: var(--surface);
+  }
+
+  .dark .glass-button {
+    @apply shadow-none;
+  }
+}

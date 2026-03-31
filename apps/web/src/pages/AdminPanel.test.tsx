@@ -1,0 +1,130 @@
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import "@testing-library/jest-dom/vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { AdminPanel } from "./AdminPanel";
+
+describe("AdminPanel", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    localStorage.clear();
+  });
+
+  it("renders login form when unauthenticated", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/admin/session")) {
+          return new Response(JSON.stringify({ authenticated: false, username: null }), { status: 200 });
+        }
+
+        return new Response(JSON.stringify({ error: "unexpected" }), { status: 400 });
+      }),
+    );
+
+    render(<AdminPanel />);
+
+    expect(await screen.findByText("Login")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Username")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Password")).toBeInTheDocument();
+  });
+
+  it("shows upstream sync errors after saving settings", async () => {
+    const user = userEvent.setup();
+    localStorage.setItem("admin-section", "upstreams");
+    const settingsResponse = {
+      settings: {
+        siteTitle: "Model Status",
+        siteSubtitle: "Model API Monitoring Panel",
+        githubRepoUrl: "",
+        probeIntervalMs: 300000,
+        catalogSyncIntervalMs: 900000,
+        probeTimeoutMs: 20000,
+        probeConcurrency: 4,
+        probeMaxTokens: 4,
+        probeTemperature: 0,
+        degradedRetryAttempts: 2,
+        modelStatusUpScoreThreshold: 60,
+        modelStatusDegradedScoreThreshold: 30,
+      },
+      apiKeyConfigured: false,
+      apiKeyMasked: null,
+      upstreams: [
+        {
+          id: "main",
+          name: "Main",
+          group: "default",
+          apiBaseUrl: "https://example.com/v1",
+          modelsUrl: "https://example.com/v1/models",
+          isActive: true,
+          apiKeyConfigured: false,
+          apiKeyMasked: null,
+        },
+      ],
+    };
+
+    const dashboardResponse = {
+      range: "24h",
+      from: new Date(Date.now() - 86_400_000).toISOString(),
+      to: new Date().toISOString(),
+      nextProbeAt: null,
+      siteTitle: "Model Status",
+      siteSubtitle: "Model API Monitoring Panel",
+      githubRepoUrl: "",
+      summary: {
+        totalModels: 0,
+        availableModels: 0,
+        degradedModels: 0,
+        errorModels: 0,
+        availabilityPercentage: 0,
+      },
+      models: [],
+      upstreams: [],
+      recentProbes: [],
+    };
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+
+        if (url.includes("/api/admin/session")) {
+          return new Response(JSON.stringify({ authenticated: true, username: "admin" }), { status: 200 });
+        }
+
+        if (url.includes("/api/admin/settings") && method === "GET") {
+          return new Response(JSON.stringify(settingsResponse), { status: 200 });
+        }
+
+        if (url.includes("/api/admin/dashboard")) {
+          return new Response(JSON.stringify(dashboardResponse), { status: 200 });
+        }
+
+        if (url.includes("/api/admin/settings") && method === "PUT") {
+          return new Response(JSON.stringify(settingsResponse), { status: 200 });
+        }
+
+        if (url.includes("/api/admin/actions/sync-models")) {
+          return new Response(
+            JSON.stringify({ error: "Models sync failed for upstream Main: HTTP 401 Unauthorized" }),
+            { status: 502 },
+          );
+        }
+
+        return new Response(JSON.stringify({ error: "unexpected" }), { status: 400 });
+      }),
+    );
+
+    render(<AdminPanel />);
+
+    await user.type(await screen.findByPlaceholderText("Replace API key"), "sk-test");
+    await user.click(screen.getByRole("button", { name: "Save Settings" }));
+
+    expect(
+      await screen.findByText("Models sync failed for upstream Main: HTTP 401 Unauthorized"),
+    ).toBeInTheDocument();
+  });
+});

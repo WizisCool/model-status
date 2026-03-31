@@ -1,0 +1,118 @@
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+type EnvSource = Record<string, string | undefined>;
+
+function parseEnvFile(contents: string): Record<string, string> {
+  const values: Record<string, string> = {};
+
+  for (const rawLine of contents.split(/\r?\n/u)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) {
+      continue;
+    }
+
+    const separatorIndex = line.indexOf("=");
+    if (separatorIndex === -1) {
+      continue;
+    }
+
+    const key = line.slice(0, separatorIndex).trim();
+    const value = line.slice(separatorIndex + 1).trim().replace(/^['"]|['"]$/gu, "");
+
+    if (key) {
+      values[key] = value;
+    }
+  }
+
+  return values;
+}
+
+function findWorkspaceRoot(startDirectory: string): string {
+  let currentDirectory = resolve(startDirectory);
+  let lastValidRoot = resolve(startDirectory);
+
+  while (true) {
+    const packageJsonPath = resolve(currentDirectory, "package.json");
+    const agentsPath = resolve(currentDirectory, "AGENTS.md");
+    // Track the deepest directory that has both markers (keep going up to find root)
+    if (existsSync(packageJsonPath) && existsSync(agentsPath)) {
+      lastValidRoot = currentDirectory;
+    }
+
+    const parentDirectory = dirname(currentDirectory);
+    if (parentDirectory === currentDirectory) {
+      // Reached filesystem root, return the last valid root found
+      return lastValidRoot;
+    }
+
+    currentDirectory = parentDirectory;
+  }
+}
+
+function loadFileEnv(startDirectory: string): Record<string, string> {
+  const workspaceRoot = findWorkspaceRoot(startDirectory);
+  const values: Record<string, string> = {};
+
+  for (const fileName of [".env", ".env.local"]) {
+    const filePath = resolve(workspaceRoot, fileName);
+    if (!existsSync(filePath)) {
+      continue;
+    }
+
+    Object.assign(values, parseEnvFile(readFileSync(filePath, "utf8")));
+  }
+
+  return values;
+}
+
+function readNumber(env: EnvSource, key: string, fallback: number): number {
+  const raw = env[key];
+  if (!raw) {
+    return fallback;
+  }
+
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function readString(env: EnvSource, key: string, fallback: string): string {
+  const raw = env[key];
+  return raw && raw.trim().length > 0 ? raw.trim() : fallback;
+}
+
+function trimTrailingSlash(value: string): string {
+  return value.replace(/\/+$/u, "");
+}
+
+export type AppConfig = {
+  workspaceRoot: string;
+  webDistDir: string;
+  host: string;
+  port: number;
+  webOrigin: string;
+  databaseFile: string;
+  adminBootstrapUsername: string;
+  adminBootstrapPassword: string;
+  sessionSecret: string;
+};
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+export function loadConfig(envSource: EnvSource = process.env): AppConfig {
+  const workspaceRoot = findWorkspaceRoot(__dirname);
+  const env = { ...loadFileEnv(__dirname), ...envSource };
+  return {
+    workspaceRoot,
+    webDistDir: resolve(workspaceRoot, "apps/web/dist"),
+    host: readString(env, "HOST", "0.0.0.0"),
+    port: readNumber(env, "PORT", 3000),
+    webOrigin: readString(env, "WEB_ORIGIN", "http://localhost:5173"),
+    databaseFile: resolve(workspaceRoot, readString(env, "DATABASE_FILE", "./data/model-status.db")),
+    adminBootstrapUsername: readString(env, "ADMIN_BOOTSTRAP_USERNAME", "admin"),
+    adminBootstrapPassword: readString(env, "ADMIN_BOOTSTRAP_PASSWORD", ""),
+    sessionSecret: readString(env, "SESSION_SECRET", ""),
+  };
+}

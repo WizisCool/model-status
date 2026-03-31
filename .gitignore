@@ -1,0 +1,17 @@
+node_modules/
+dist/
+coverage/
+.DS_Store
+.env
+.env.local
+.env.*.local
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/*.sqlite
+apps/web/dist/
+server.pid
+%TMP%/
+%TEMP%/
+.sisyphus/
+prod_cookies.txt

@@ -1,0 +1,32 @@
+{
+  "name": "model-status",
+  "private": true,
+  "type": "module",
+  "packageManager": "npm@11.10.1",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c cyan,magenta \"npm run dev --workspace @model-status/api\" \"npm run dev --workspace @model-status/web\"",
+    "build": "npm run typecheck && npm run build --workspace @model-status/web",
+    "start": "npm run start --workspace @model-status/api",
+    "test": "npm run test --workspace @model-status/shared && npm run test --workspace @model-status/api && npm run test --workspace @model-status/web",
+    "typecheck": "npm run typecheck --workspace @model-status/shared && npm run typecheck --workspace @model-status/api && npm run typecheck --workspace @model-status/web"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^24.6.1",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.0.4",
+    "concurrently": "^9.2.1",
+    "jsdom": "^26.1.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.12",
+    "vitest": "^3.2.4"
+  }
+}

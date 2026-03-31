@@ -284,4 +284,50 @@ describe("probe helpers", () => {
     expect(result.success).toBe(true);
     expect(db.insertProbe).toHaveBeenCalledTimes(1);
   });
+
+  it("does not retry failed probes even when degraded retries are enabled", async () => {
+    const db: DbClient = {
+      upsertModel: vi.fn(),
+      upsertUpstream: vi.fn(),
+      listUpstreams: vi.fn(() => []),
+      deactivateMissingUpstreams: vi.fn(),
+      listModels: vi.fn(() => [
+        { upstreamId: "main", id: "gpt-fail-fast", created: null, ownedBy: null, displayName: null, icon: null, isVisible: true, sortOrder: 0, syncedAt: new Date().toISOString(), isActive: true },
+      ]),
+      updateModelMetadata: vi.fn(),
+      deactivateMissingModels: vi.fn(),
+      getSetting: vi.fn(() => null),
+      setSetting: vi.fn(),
+      listSettings: vi.fn(() => ({})),
+      getAdminUserByUsername: vi.fn(() => null),
+      getAdminUserById: vi.fn(() => null),
+      createAdminUser: vi.fn(),
+      updateAdminLogin: vi.fn(),
+      createAdminSession: vi.fn(),
+      getAdminSessionByTokenHash: vi.fn(() => null),
+      touchAdminSession: vi.fn(),
+      deleteAdminSession: vi.fn(),
+      deleteExpiredAdminSessions: vi.fn(),
+      insertProbe: vi.fn(() => 1),
+      listProbesSince: vi.fn(() => []),
+      listRecentProbes: vi.fn(() => []),
+      close: vi.fn(),
+    };
+
+    const fetchMock = vi.fn(async () => {
+      throw new Error("timeout");
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const [result] = await probeAllModels({ ...baseConfig, degradedRetryAttempts: 3 }, db);
+
+    expect(result).toBeDefined();
+    if (!result) {
+      throw new Error("Expected a probe result for failed retry test");
+    }
+
+    expect(result.success).toBe(false);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(db.insertProbe).toHaveBeenCalledTimes(1);
+  });
 });

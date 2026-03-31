@@ -230,6 +230,7 @@ async function runProbeWithRetries(
   config: ProbeTargetConfig,
   degradedRetryAttempts: number,
   upThreshold: number,
+  degradedThreshold: number,
 ): Promise<ProbeAttemptResult> {
   const attempts = Math.max(1, degradedRetryAttempts + 1);
   let bestResult: ProbeAttemptResult | null = null;
@@ -242,7 +243,10 @@ async function runProbeWithRetries(
       bestResult = result;
       bestScore = currentScore;
     }
-    if (result.success && currentScore >= upThreshold) {
+
+    const isHealthy = result.success && currentScore >= upThreshold;
+    const isDegraded = result.success && currentScore >= degradedThreshold && currentScore < upThreshold;
+    if (isHealthy || !isDegraded) {
       break;
     }
   }
@@ -305,14 +309,15 @@ export async function probeAllModels(config: RuntimeSettings, db: DbClient): Pro
     const probe = await runProbeWithRetries(
       model,
       {
-      apiBaseUrl: upstream.apiBaseUrl,
-      apiKey: upstream.apiKey,
-      probeTimeoutMs: config.probeTimeoutMs,
-      probeMaxTokens: config.probeMaxTokens,
-      probeTemperature: config.probeTemperature,
+        apiBaseUrl: upstream.apiBaseUrl,
+        apiKey: upstream.apiKey,
+        probeTimeoutMs: config.probeTimeoutMs,
+        probeMaxTokens: config.probeMaxTokens,
+        probeTemperature: config.probeTemperature,
       },
       config.degradedRetryAttempts,
       config.modelStatusUpScoreThreshold,
+      config.modelStatusDegradedScoreThreshold,
     );
     db.insertProbe({
       upstreamId,

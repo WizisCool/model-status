@@ -1,4 +1,4 @@
-import { type AdminDashboardResponse, type DashboardRange, type DashboardResponse, rangeStartIso } from "@model-status/shared";
+import { PROJECT_REPOSITORY_URL, type AdminDashboardResponse, type DashboardRange, type DashboardResponse, rangeStartIso } from "@model-status/shared";
 
 import type { DbClient, ModelRecord, ProbeRecord } from "../db";
 
@@ -10,7 +10,6 @@ type DashboardScoreConfig = {
 type DashboardMetaConfig = DashboardScoreConfig & {
   siteTitle: string;
   siteSubtitle: string;
-  githubRepoUrl: string;
   probeIntervalMs: number;
 };
 
@@ -229,7 +228,7 @@ export function getDashboardData(
     nextProbeAt: null,
     siteTitle: config.siteTitle,
     siteSubtitle: config.siteSubtitle,
-    githubRepoUrl: config.githubRepoUrl,
+    githubRepoUrl: PROJECT_REPOSITORY_URL,
     summary: {
       totalModels: models.length,
       availableModels,

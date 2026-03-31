@@ -1,4 +1,5 @@
 export const FIXED_DASHBOARD_RANGES = ["90m", "24h", "7d", "30d"] as const;
+export const PROJECT_REPOSITORY_URL = "https://github.com/WizisCool/model-status";
 
 export type DashboardRange = (typeof FIXED_DASHBOARD_RANGES)[number];
 
@@ -149,7 +150,6 @@ export type AdminSessionResponse = {
 export type AdminSettings = {
   siteTitle: string;
   siteSubtitle: string;
-  githubRepoUrl: string;
   probeIntervalMs: number;
   catalogSyncIntervalMs: number;
   probeTimeoutMs: number;
@@ -157,6 +157,7 @@ export type AdminSettings = {
   probeMaxTokens: number;
   probeTemperature: number;
   degradedRetryAttempts: number;
+  failedRetryAttempts: number;
   modelStatusUpScoreThreshold: number;
   modelStatusDegradedScoreThreshold: number;
 };

@@ -38,7 +38,6 @@ describe("AdminPanel", () => {
       settings: {
         siteTitle: "Model Status",
         siteSubtitle: "Model API Monitoring Panel",
-        githubRepoUrl: "",
         probeIntervalMs: 300000,
         catalogSyncIntervalMs: 900000,
         probeTimeoutMs: 20000,
@@ -46,6 +45,7 @@ describe("AdminPanel", () => {
         probeMaxTokens: 4,
         probeTemperature: 0,
         degradedRetryAttempts: 2,
+        failedRetryAttempts: 1,
         modelStatusUpScoreThreshold: 60,
         modelStatusDegradedScoreThreshold: 30,
       },
@@ -72,7 +72,7 @@ describe("AdminPanel", () => {
       nextProbeAt: null,
       siteTitle: "Model Status",
       siteSubtitle: "Model API Monitoring Panel",
-      githubRepoUrl: "",
+      githubRepoUrl: "https://github.com/WizisCool/model-status",
       summary: {
         totalModels: 0,
         availableModels: 0,
@@ -126,5 +126,73 @@ describe("AdminPanel", () => {
     expect(
       await screen.findByText("Models sync failed for upstream Main: HTTP 401 Unauthorized"),
     ).toBeInTheDocument();
+  });
+
+  it("groups runtime settings and hides repository customization", async () => {
+    localStorage.setItem("admin-section", "runtime");
+    const settingsResponse = {
+      settings: {
+        siteTitle: "Model Status",
+        siteSubtitle: "Model API Monitoring Panel",
+        probeIntervalMs: 300000,
+        catalogSyncIntervalMs: 900000,
+        probeTimeoutMs: 20000,
+        probeConcurrency: 4,
+        probeMaxTokens: 4,
+        probeTemperature: 0,
+        degradedRetryAttempts: 2,
+        failedRetryAttempts: 1,
+        modelStatusUpScoreThreshold: 60,
+        modelStatusDegradedScoreThreshold: 30,
+      },
+      apiKeyConfigured: false,
+      apiKeyMasked: null,
+      upstreams: [],
+    };
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+
+        if (url.includes("/api/admin/session")) {
+          return new Response(JSON.stringify({ authenticated: true, username: "admin" }), { status: 200 });
+        }
+
+        if (url.includes("/api/admin/settings")) {
+          return new Response(JSON.stringify(settingsResponse), { status: 200 });
+        }
+
+        if (url.includes("/api/admin/dashboard")) {
+          return new Response(JSON.stringify({
+            range: "24h",
+            from: new Date(Date.now() - 86_400_000).toISOString(),
+            to: new Date().toISOString(),
+            nextProbeAt: null,
+            siteTitle: "Model Status",
+            siteSubtitle: "Model API Monitoring Panel",
+            githubRepoUrl: "https://github.com/WizisCool/model-status",
+            summary: {
+              totalModels: 0,
+              availableModels: 0,
+              degradedModels: 0,
+              errorModels: 0,
+              availabilityPercentage: 0,
+            },
+            models: [],
+            upstreams: [],
+            recentProbes: [],
+          }), { status: 200 });
+        }
+
+        return new Response(JSON.stringify({ error: "unexpected" }), { status: 400 });
+      }),
+    );
+
+    render(<AdminPanel />);
+
+    expect((await screen.findAllByText("Retry Policy")).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Failed Retry Attempts").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Repository URL")).not.toBeInTheDocument();
   });
 });

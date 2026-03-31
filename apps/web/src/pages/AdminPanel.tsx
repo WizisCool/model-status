@@ -1,4 +1,6 @@
+import { Clock3, Gauge, RefreshCw, ShieldCheck, SwatchBook } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { PROJECT_REPOSITORY_URL } from "@model-status/shared";
 import type {
   AdminActionResponse,
   AdminSettings,
@@ -11,7 +13,7 @@ import type {
 
 import { ModelManagerSection } from "../components/ModelManagerSection";
 import { getAdminCopy } from "../adminCopy";
-import { getAdminSettingFields } from "../adminSettingFields";
+import { getAdminSettingGroups, type SettingGroupConfig } from "../adminSettingFields";
 import { ToastRegion, type ToastNotice, type ToastTone } from "../components/ToastRegion";
 import { getTranslation, normalizeLanguage, type Language } from "../i18n";
 import { applyTheme, getInitialTheme, type ThemeMode } from "../preferences";
@@ -44,6 +46,31 @@ function inferDurationUnit(valueMs: number): DurationUnit {
 function formatDurationValue(valueMs: number, unit: DurationUnit): number {
   const factor = DURATION_UNIT_FACTORS[unit];
   return Number((valueMs / factor).toFixed(2));
+}
+
+function formatDurationSummary(valueMs: number): string {
+  if (valueMs % DURATION_UNIT_FACTORS.hours === 0) {
+    return `${valueMs / DURATION_UNIT_FACTORS.hours} hr`;
+  }
+  if (valueMs % DURATION_UNIT_FACTORS.minutes === 0) {
+    return `${valueMs / DURATION_UNIT_FACTORS.minutes} min`;
+  }
+  return `${valueMs / DURATION_UNIT_FACTORS.seconds} sec`;
+}
+
+function getSettingGroupIcon(groupId: SettingGroupConfig["id"]) {
+  switch (groupId) {
+    case "branding":
+      return <SwatchBook size={18} />;
+    case "scheduling":
+      return <Clock3 size={18} />;
+    case "probe":
+      return <Gauge size={18} />;
+    case "retries":
+      return <RefreshCw size={18} />;
+    case "classification":
+      return <ShieldCheck size={18} />;
+  }
 }
 
 async function readResponseMessage(response: Response, fallback: string): Promise<string> {
@@ -95,7 +122,8 @@ export function AdminPanel() {
 
   const copy = useMemo(() => getTranslation(language), [language]);
   const adminCopy = useMemo(() => getAdminCopy(language), [language]);
-  const settingFields = useMemo(() => getAdminSettingFields(language), [language]);
+  const settingGroups = useMemo(() => getAdminSettingGroups(language), [language]);
+  const settingFields = useMemo(() => settingGroups.flatMap((group) => group.fields), [settingGroups]);
   const requestFailedCopy = language === "zh-CN" ? "请求失败" : "Request failed";
 
   const dismissNotification = useCallback((id: number) => {
@@ -377,6 +405,34 @@ export function AdminPanel() {
         { value: "minutes", label: "min" },
         { value: "hours", label: "hr" },
       ];
+  const settingFieldByKey = useMemo(
+    () => new Map(settingFields.map((field) => [field.key, field])),
+    [settingFields],
+  );
+  const runtimeHighlights = useMemo(() => {
+    if (!settings) {
+      return [];
+    }
+
+    return [
+      {
+        label: settingFieldByKey.get("probeIntervalMs")?.label ?? "Probe Interval",
+        value: formatDurationSummary(settings.settings.probeIntervalMs),
+      },
+      {
+        label: settingFieldByKey.get("probeTimeoutMs")?.label ?? "Probe Timeout",
+        value: formatDurationSummary(settings.settings.probeTimeoutMs),
+      },
+      {
+        label: settingFieldByKey.get("probeConcurrency")?.label ?? "Max Probe Concurrency",
+        value: `${settings.settings.probeConcurrency}x`,
+      },
+      {
+        label: settingGroups.find((group) => group.id === "retries")?.title ?? "Retry Policy",
+        value: `fail ${settings.settings.failedRetryAttempts} / deg ${settings.settings.degradedRetryAttempts}`,
+      },
+    ];
+  }, [settingFieldByKey, settingGroups, settings]);
 
   if (!session.authenticated) {
     return (
@@ -647,76 +703,111 @@ export function AdminPanel() {
                   <button type="button" onClick={saveSettings} className="glass-button rounded-xl px-4 py-2 text-sm font-mono">{copy.saveSettings}</button>
                 </div>
 
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  {settingFields.map((field) => {
-                    const value = settings.settings[field.key];
-                    const durationUnit = field.type === "duration"
-                      ? (durationUnits[field.key] ?? inferDurationUnit(Number(value)))
-                      : null;
-                    return (
-                      <label key={field.key} className="space-y-2 rounded-2xl border border-border bg-surface/55 p-4 text-sm text-textSecondary">
-                        <div className="space-y-1">
-                          <span className="font-mono text-xs uppercase">{field.label}</span>
-                          <p className="text-xs text-textMuted">{field.description}</p>
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  {runtimeHighlights.map((item) => (
+                    <div key={item.label} className="rounded-2xl border border-border bg-background/60 px-4 py-4">
+                      <div className="text-[10px] font-mono uppercase tracking-[0.22em] text-textMuted">{item.label}</div>
+                      <div className="mt-2 text-2xl font-mono text-textPrimary">{item.value}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="grid gap-4 xl:grid-cols-2">
+                  {settingGroups.map((group) => (
+                    <section key={group.id} className="rounded-[26px] border border-border bg-surface/55 p-5 shadow-sm shadow-black/5">
+                      <div className="flex items-start gap-4">
+                        <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl border border-border bg-background/80 text-textPrimary">
+                          {getSettingGroupIcon(group.id)}
                         </div>
-                        {field.type === "duration" && durationUnit ? (
-                          <div className="flex gap-2">
-                            <input
-                              type="number"
-                              min="0"
-                              step={field.step ?? "1"}
-                              value={String(formatDurationValue(Number(value), durationUnit))}
-                              onChange={(event) =>
-                                setSettings((current) =>
-                                  current
-                                    ? {
-                                        ...current,
-                                        settings: {
-                                          ...current.settings,
-                                          [field.key]: Math.max(0, Math.round(Number(event.target.value || "0") * DURATION_UNIT_FACTORS[durationUnit])),
-                                        },
-                                      }
-                                    : current,
-                                )
-                              }
-                              className="w-full rounded-xl border border-border bg-background/70 px-3 py-2 text-textPrimary"
-                            />
-                            <select
-                              value={durationUnit}
-                              onChange={(event) => setDurationUnits((current) => ({ ...current, [field.key]: event.target.value as DurationUnit }))}
-                              className="rounded-xl border border-border bg-background/70 px-3 py-2 text-textPrimary"
-                            >
-                              {durationUnitOptions.map((option) => (
-                                <option key={option.value} value={option.value}>
-                                  {option.label}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        ) : (
-                          <input
-                            type={field.type}
-                            step={field.step}
-                            value={String(value)}
-                            onChange={(event) =>
-                              setSettings((current) =>
-                                current
-                                  ? {
-                                      ...current,
-                                      settings: {
-                                        ...current.settings,
-                                        [field.key]: field.type === "number" ? Number(event.target.value) : event.target.value,
-                                      },
+                        <div className="min-w-0">
+                          <h3 className="text-lg font-mono text-textPrimary">{group.title}</h3>
+                          <p className="mt-1 text-sm text-textSecondary">{group.description}</p>
+                        </div>
+                      </div>
+
+                      {group.note ? (
+                        <div className="mt-4 rounded-2xl border border-border bg-background/65 px-4 py-3 text-sm text-textSecondary">
+                          <div>{group.note}</div>
+                          <a href={PROJECT_REPOSITORY_URL} target="_blank" rel="noreferrer" className="mt-2 inline-flex font-mono text-xs text-accent transition-colors hover:text-textPrimary">
+                            {PROJECT_REPOSITORY_URL}
+                          </a>
+                        </div>
+                      ) : null}
+
+                      <div className={`mt-4 grid gap-4 ${group.fields.length > 2 ? "md:grid-cols-2" : ""}`}>
+                        {group.fields.map((field) => {
+                          const value = settings.settings[field.key];
+                          const durationUnit = field.type === "duration"
+                            ? (durationUnits[field.key] ?? inferDurationUnit(Number(value)))
+                            : null;
+
+                          return (
+                            <label key={field.key} className="space-y-2 rounded-2xl border border-border bg-background/70 p-4 text-sm text-textSecondary">
+                              <div className="space-y-1">
+                                <span className="font-mono text-xs uppercase">{field.label}</span>
+                                <p className="text-xs text-textMuted">{field.description}</p>
+                              </div>
+                              {field.type === "duration" && durationUnit ? (
+                                <div className="flex gap-2">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step={field.step ?? "1"}
+                                    value={String(formatDurationValue(Number(value), durationUnit))}
+                                    onChange={(event) =>
+                                      setSettings((current) =>
+                                        current
+                                          ? {
+                                              ...current,
+                                              settings: {
+                                                ...current.settings,
+                                                [field.key]: Math.max(0, Math.round(Number(event.target.value || "0") * DURATION_UNIT_FACTORS[durationUnit])),
+                                              },
+                                            }
+                                          : current,
+                                      )
                                     }
-                                  : current,
-                              )
-                            }
-                            className="w-full rounded-xl border border-border bg-background/70 px-3 py-2 text-textPrimary"
-                          />
-                        )}
-                      </label>
-                    );
-                  })}
+                                    className="w-full rounded-xl border border-border bg-surface/80 px-3 py-2 text-textPrimary"
+                                  />
+                                  <select
+                                    value={durationUnit}
+                                    onChange={(event) => setDurationUnits((current) => ({ ...current, [field.key]: event.target.value as DurationUnit }))}
+                                    className="rounded-xl border border-border bg-surface/80 px-3 py-2 text-textPrimary"
+                                  >
+                                    {durationUnitOptions.map((option) => (
+                                      <option key={option.value} value={option.value}>
+                                        {option.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              ) : (
+                                <input
+                                  type={field.type}
+                                  step={field.step}
+                                  value={String(value)}
+                                  onChange={(event) =>
+                                    setSettings((current) =>
+                                      current
+                                        ? {
+                                            ...current,
+                                            settings: {
+                                              ...current.settings,
+                                              [field.key]: field.type === "number" ? Number(event.target.value || "0") : event.target.value,
+                                            },
+                                          }
+                                        : current,
+                                    )
+                                  }
+                                  className="w-full rounded-xl border border-border bg-surface/80 px-3 py-2 text-textPrimary"
+                                />
+                              )}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  ))}
                 </div>
               </section>
             ) : null}

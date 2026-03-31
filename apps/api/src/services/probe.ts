@@ -229,14 +229,16 @@ async function runProbeWithRetries(
   model: string,
   config: ProbeTargetConfig,
   degradedRetryAttempts: number,
+  failedRetryAttempts: number,
   upThreshold: number,
   degradedThreshold: number,
 ): Promise<ProbeAttemptResult> {
-  const attempts = Math.max(1, degradedRetryAttempts + 1);
   let bestResult: ProbeAttemptResult | null = null;
   let bestScore = -1;
+  let degradedRetriesLeft = Math.max(0, degradedRetryAttempts);
+  let failedRetriesLeft = Math.max(0, failedRetryAttempts);
 
-  for (let index = 0; index < attempts; index += 1) {
+  while (true) {
     const result = await runSingleProbe(model, config);
     const currentScore = scoreResult(result);
     if (!bestResult || currentScore > bestScore) {
@@ -246,9 +248,21 @@ async function runProbeWithRetries(
 
     const isHealthy = result.success && currentScore >= upThreshold;
     const isDegraded = result.success && currentScore >= degradedThreshold && currentScore < upThreshold;
-    if (isHealthy || !isDegraded) {
+    if (isHealthy) {
       break;
     }
+
+    if (isDegraded && degradedRetriesLeft > 0) {
+      degradedRetriesLeft -= 1;
+      continue;
+    }
+
+    if (!result.success && failedRetriesLeft > 0) {
+      failedRetriesLeft -= 1;
+      continue;
+    }
+
+    break;
   }
 
   if (!bestResult) {
@@ -316,6 +330,7 @@ export async function probeAllModels(config: RuntimeSettings, db: DbClient): Pro
         probeTemperature: config.probeTemperature,
       },
       config.degradedRetryAttempts,
+      config.failedRetryAttempts,
       config.modelStatusUpScoreThreshold,
       config.modelStatusDegradedScoreThreshold,
     );

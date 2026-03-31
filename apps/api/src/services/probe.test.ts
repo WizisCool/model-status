@@ -7,7 +7,6 @@ import { __probeTestUtils, probeAllModels } from "./probe";
 const baseConfig: RuntimeSettings = {
   siteTitle: "Model Status",
   siteSubtitle: "subtitle",
-  githubRepoUrl: "",
   probeIntervalMs: 1000,
   catalogSyncIntervalMs: 1000,
   probeTimeoutMs: 1000,
@@ -15,6 +14,7 @@ const baseConfig: RuntimeSettings = {
   probeMaxTokens: 4,
   probeTemperature: 0,
   degradedRetryAttempts: 1,
+  failedRetryAttempts: 0,
   modelStatusUpScoreThreshold: 60,
   modelStatusDegradedScoreThreshold: 30,
   upstreams: [
@@ -285,7 +285,7 @@ describe("probe helpers", () => {
     expect(db.insertProbe).toHaveBeenCalledTimes(1);
   });
 
-  it("does not retry failed probes even when degraded retries are enabled", async () => {
+  it("does not retry failed probes when failed retries are disabled", async () => {
     const db: DbClient = {
       upsertModel: vi.fn(),
       upsertUpstream: vi.fn(),
@@ -319,7 +319,7 @@ describe("probe helpers", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    const [result] = await probeAllModels({ ...baseConfig, degradedRetryAttempts: 3 }, db);
+    const [result] = await probeAllModels({ ...baseConfig, degradedRetryAttempts: 3, failedRetryAttempts: 0 }, db);
 
     expect(result).toBeDefined();
     if (!result) {
@@ -328,6 +328,67 @@ describe("probe helpers", () => {
 
     expect(result.success).toBe(false);
     expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(db.insertProbe).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries failed probes when failed retries are enabled", async () => {
+    const db: DbClient = {
+      upsertModel: vi.fn(),
+      upsertUpstream: vi.fn(),
+      listUpstreams: vi.fn(() => []),
+      deactivateMissingUpstreams: vi.fn(),
+      listModels: vi.fn(() => [
+        { upstreamId: "main", id: "gpt-fail-retry", created: null, ownedBy: null, displayName: null, icon: null, isVisible: true, sortOrder: 0, syncedAt: new Date().toISOString(), isActive: true },
+      ]),
+      updateModelMetadata: vi.fn(),
+      deactivateMissingModels: vi.fn(),
+      getSetting: vi.fn(() => null),
+      setSetting: vi.fn(),
+      listSettings: vi.fn(() => ({})),
+      getAdminUserByUsername: vi.fn(() => null),
+      getAdminUserById: vi.fn(() => null),
+      createAdminUser: vi.fn(),
+      updateAdminLogin: vi.fn(),
+      createAdminSession: vi.fn(),
+      getAdminSessionByTokenHash: vi.fn(() => null),
+      touchAdminSession: vi.fn(),
+      deleteAdminSession: vi.fn(),
+      deleteExpiredAdminSessions: vi.fn(),
+      insertProbe: vi.fn(() => 1),
+      listProbesSince: vi.fn(() => []),
+      listRecentProbes: vi.fn(() => []),
+      close: vi.fn(),
+    };
+
+    const successResponse = new Response(
+      new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('data: {"choices":[{"delta":{"content":"ok"}}]}\n\n' + "data: [DONE]\n\n"));
+          controller.close();
+        },
+      }),
+      { status: 200 },
+    );
+
+    const fetchMock = vi
+      .fn(async (): Promise<Response> => {
+        throw new Error("timeout");
+      })
+      .mockImplementationOnce(async (): Promise<Response> => {
+        throw new Error("timeout");
+      })
+      .mockImplementationOnce(async (): Promise<Response> => successResponse);
+    vi.stubGlobal("fetch", fetchMock);
+
+    const [result] = await probeAllModels({ ...baseConfig, failedRetryAttempts: 1 }, db);
+
+    expect(result).toBeDefined();
+    if (!result) {
+      throw new Error("Expected a probe result for failed retry success test");
+    }
+
+    expect(result.success).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(db.insertProbe).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,3 +1,4 @@
+import { PROJECT_REPOSITORY_URL } from "@model-status/shared";
 import { describe, expect, it, vi } from "vitest";
 
 import type { DbClient } from "../db";
@@ -104,6 +105,7 @@ describe("dashboard service", () => {
     expect(result.summary.degradedModels).toBe(0);
     expect(result.summary.errorModels).toBe(1);
     expect(result.summary.availabilityPercentage).toBe(50);
+    expect(result.githubRepoUrl).toBe(PROJECT_REPOSITORY_URL);
     expect(result.upstreams).toHaveLength(1);
     expect(result.nextProbeAt).toBeNull();
     expect(result.models).toHaveLength(1);

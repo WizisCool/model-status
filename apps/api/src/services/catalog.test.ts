@@ -34,7 +34,6 @@ describe("catalog service", () => {
   const settings: RuntimeSettings = {
     siteTitle: "Model Status",
     siteSubtitle: "subtitle",
-    githubRepoUrl: "",
     probeIntervalMs: 1000,
     catalogSyncIntervalMs: 1000,
     probeTimeoutMs: 1000,
@@ -42,6 +41,7 @@ describe("catalog service", () => {
     probeMaxTokens: 4,
     probeTemperature: 0,
     degradedRetryAttempts: 1,
+    failedRetryAttempts: 0,
     modelStatusUpScoreThreshold: 60,
     modelStatusDegradedScoreThreshold: 30,
     upstreams: [

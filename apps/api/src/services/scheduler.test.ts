@@ -67,6 +67,9 @@ describe("scheduler service", () => {
         if (key === "DEGRADED_RETRY_ATTEMPTS") {
           return "1";
         }
+        if (key === "FAILED_RETRY_ATTEMPTS") {
+          return "0";
+        }
         if (key === "MODEL_STATUS_UP_SCORE_THRESHOLD") {
           return "60";
         }
@@ -78,9 +81,6 @@ describe("scheduler service", () => {
         }
         if (key === "SITE_SUBTITLE") {
           return "subtitle";
-        }
-        if (key === "GITHUB_REPO_URL") {
-          return "";
         }
         return null;
       }),

@@ -7,7 +7,6 @@ const SETTING_KEYS = {
   bootstrapInitialized: "BOOTSTRAP_INITIALIZED",
   siteTitle: "SITE_TITLE",
   siteSubtitle: "SITE_SUBTITLE",
-  githubRepoUrl: "GITHUB_REPO_URL",
   probeIntervalMs: "PROBE_INTERVAL_MS",
   catalogSyncIntervalMs: "CATALOG_SYNC_INTERVAL_MS",
   probeTimeoutMs: "PROBE_TIMEOUT_MS",
@@ -15,6 +14,7 @@ const SETTING_KEYS = {
   probeMaxTokens: "PROBE_MAX_TOKENS",
   probeTemperature: "PROBE_TEMPERATURE",
   degradedRetryAttempts: "DEGRADED_RETRY_ATTEMPTS",
+  failedRetryAttempts: "FAILED_RETRY_ATTEMPTS",
   modelStatusUpScoreThreshold: "MODEL_STATUS_UP_SCORE_THRESHOLD",
   modelStatusDegradedScoreThreshold: "MODEL_STATUS_DEGRADED_SCORE_THRESHOLD",
 } as const;
@@ -62,7 +62,6 @@ function defaultAdminSettings(): AdminSettings {
   return {
     siteTitle: "Model Status",
     siteSubtitle: "Model API Monitoring Panel",
-    githubRepoUrl: "https://github.com/WizisCool/model-status",
     probeIntervalMs: 5 * 60 * 1000,
     catalogSyncIntervalMs: 15 * 60 * 1000,
     probeTimeoutMs: 20_000,
@@ -70,6 +69,7 @@ function defaultAdminSettings(): AdminSettings {
     probeMaxTokens: 4,
     probeTemperature: 0,
     degradedRetryAttempts: 2,
+    failedRetryAttempts: 0,
     modelStatusUpScoreThreshold: 60,
     modelStatusDegradedScoreThreshold: 30,
   };
@@ -82,7 +82,6 @@ function readAdminSettings(db: DbClient): AdminSettings {
   return {
     siteTitle: settings[SETTING_KEYS.siteTitle] ?? defaults.siteTitle,
     siteSubtitle: settings[SETTING_KEYS.siteSubtitle] ?? defaults.siteSubtitle,
-    githubRepoUrl: settings[SETTING_KEYS.githubRepoUrl] ?? defaults.githubRepoUrl,
     probeIntervalMs: clampNumber(Number(settings[SETTING_KEYS.probeIntervalMs] ?? defaults.probeIntervalMs), 30_000, 86_400_000),
     catalogSyncIntervalMs: clampNumber(Number(settings[SETTING_KEYS.catalogSyncIntervalMs] ?? defaults.catalogSyncIntervalMs), 60_000, 86_400_000),
     probeTimeoutMs: clampNumber(Number(settings[SETTING_KEYS.probeTimeoutMs] ?? defaults.probeTimeoutMs), 2_000, 120_000),
@@ -90,6 +89,7 @@ function readAdminSettings(db: DbClient): AdminSettings {
     probeMaxTokens: clampNumber(Number(settings[SETTING_KEYS.probeMaxTokens] ?? defaults.probeMaxTokens), 1, 64),
     probeTemperature: clampNumber(Number(settings[SETTING_KEYS.probeTemperature] ?? defaults.probeTemperature), 0, 2),
     degradedRetryAttempts: clampNumber(Number(settings[SETTING_KEYS.degradedRetryAttempts] ?? defaults.degradedRetryAttempts), 0, 3),
+    failedRetryAttempts: clampNumber(Number(settings[SETTING_KEYS.failedRetryAttempts] ?? defaults.failedRetryAttempts), 0, 3),
     modelStatusUpScoreThreshold: clampNumber(Number(settings[SETTING_KEYS.modelStatusUpScoreThreshold] ?? defaults.modelStatusUpScoreThreshold), 0, 100),
     modelStatusDegradedScoreThreshold: clampNumber(Number(settings[SETTING_KEYS.modelStatusDegradedScoreThreshold] ?? defaults.modelStatusDegradedScoreThreshold), 0, 100),
   };
@@ -103,7 +103,6 @@ export function ensureRuntimeSettings(db: DbClient, _config: AppConfig): void {
   for (const [key, value] of Object.entries({
     [SETTING_KEYS.siteTitle]: defaults.siteTitle,
     [SETTING_KEYS.siteSubtitle]: defaults.siteSubtitle,
-    [SETTING_KEYS.githubRepoUrl]: defaults.githubRepoUrl,
     [SETTING_KEYS.probeIntervalMs]: String(defaults.probeIntervalMs),
     [SETTING_KEYS.catalogSyncIntervalMs]: String(defaults.catalogSyncIntervalMs),
     [SETTING_KEYS.probeTimeoutMs]: String(defaults.probeTimeoutMs),
@@ -111,6 +110,7 @@ export function ensureRuntimeSettings(db: DbClient, _config: AppConfig): void {
     [SETTING_KEYS.probeMaxTokens]: String(defaults.probeMaxTokens),
     [SETTING_KEYS.probeTemperature]: String(defaults.probeTemperature),
     [SETTING_KEYS.degradedRetryAttempts]: String(defaults.degradedRetryAttempts),
+    [SETTING_KEYS.failedRetryAttempts]: String(defaults.failedRetryAttempts),
     [SETTING_KEYS.modelStatusUpScoreThreshold]: String(defaults.modelStatusUpScoreThreshold),
     [SETTING_KEYS.modelStatusDegradedScoreThreshold]: String(defaults.modelStatusDegradedScoreThreshold),
   })) {
@@ -167,7 +167,6 @@ export function getAdminSettingsResponse(db: DbClient, config: AppConfig): Admin
     settings: {
       siteTitle: runtime.siteTitle,
       siteSubtitle: runtime.siteSubtitle,
-      githubRepoUrl: runtime.githubRepoUrl,
       probeIntervalMs: runtime.probeIntervalMs,
       catalogSyncIntervalMs: runtime.catalogSyncIntervalMs,
       probeTimeoutMs: runtime.probeTimeoutMs,
@@ -175,6 +174,7 @@ export function getAdminSettingsResponse(db: DbClient, config: AppConfig): Admin
       probeMaxTokens: runtime.probeMaxTokens,
       probeTemperature: runtime.probeTemperature,
       degradedRetryAttempts: runtime.degradedRetryAttempts,
+      failedRetryAttempts: runtime.failedRetryAttempts,
       modelStatusUpScoreThreshold: runtime.modelStatusUpScoreThreshold,
       modelStatusDegradedScoreThreshold: runtime.modelStatusDegradedScoreThreshold,
     },
@@ -200,13 +200,11 @@ export function updateAdminSettings(db: DbClient, config: AppConfig, updates: Up
     ...updates,
     siteTitle: typeof updates.siteTitle === "string" ? updates.siteTitle.trim() || current.siteTitle : current.siteTitle,
     siteSubtitle: typeof updates.siteSubtitle === "string" ? updates.siteSubtitle.trim() : current.siteSubtitle,
-    githubRepoUrl: typeof updates.githubRepoUrl === "string" ? updates.githubRepoUrl.trim() : current.githubRepoUrl,
   };
   const nowIso = new Date().toISOString();
 
   db.setSetting(SETTING_KEYS.siteTitle, next.siteTitle, nowIso);
   db.setSetting(SETTING_KEYS.siteSubtitle, next.siteSubtitle, nowIso);
-  db.setSetting(SETTING_KEYS.githubRepoUrl, next.githubRepoUrl, nowIso);
   db.setSetting(SETTING_KEYS.probeIntervalMs, String(clampNumber(next.probeIntervalMs, 30_000, 86_400_000)), nowIso);
   db.setSetting(SETTING_KEYS.catalogSyncIntervalMs, String(clampNumber(next.catalogSyncIntervalMs, 60_000, 86_400_000)), nowIso);
   db.setSetting(SETTING_KEYS.probeTimeoutMs, String(clampNumber(next.probeTimeoutMs, 2_000, 120_000)), nowIso);
@@ -214,6 +212,7 @@ export function updateAdminSettings(db: DbClient, config: AppConfig, updates: Up
   db.setSetting(SETTING_KEYS.probeMaxTokens, String(clampNumber(next.probeMaxTokens, 1, 64)), nowIso);
   db.setSetting(SETTING_KEYS.probeTemperature, String(clampNumber(next.probeTemperature, 0, 2)), nowIso);
   db.setSetting(SETTING_KEYS.degradedRetryAttempts, String(clampNumber(next.degradedRetryAttempts, 0, 3)), nowIso);
+  db.setSetting(SETTING_KEYS.failedRetryAttempts, String(clampNumber(next.failedRetryAttempts, 0, 3)), nowIso);
   db.setSetting(SETTING_KEYS.modelStatusUpScoreThreshold, String(clampNumber(next.modelStatusUpScoreThreshold, 0, 100)), nowIso);
   db.setSetting(SETTING_KEYS.modelStatusDegradedScoreThreshold, String(clampNumber(next.modelStatusDegradedScoreThreshold, 0, 100)), nowIso);
 

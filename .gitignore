@@ -9,9 +9,12 @@ data/*.db
 data/*.db-wal
 data/*.db-shm
 data/*.sqlite
+apps/api/data/
 apps/web/dist/
 server.pid
 %TMP%/
 %TEMP%/
 .sisyphus/
 prod_cookies.txt
+**/__pycache__/
+*.pyc

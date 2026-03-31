@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { App } from "./App";
 import "@testing-library/jest-dom/vitest";
 import { describe, expect, it, vi } from "vitest";
@@ -125,5 +125,16 @@ describe("App", () => {
 
     expect(await screen.findByText("模型总数")).toBeInTheDocument();
     expect(screen.getAllByText("模型 API 监控面板").length).toBeGreaterThan(0);
+  });
+  it("stretches sparse recent status bars across the full row", async () => {
+    render(<App />);
+
+    const recentStatusBars = await screen.findAllByRole("img", { name: /Recent Status/i });
+    const sparseBars = within(recentStatusBars[0] as HTMLElement).getAllByTitle(/score|No probe data/i);
+
+    expect(recentStatusBars[0]).toHaveClass("w-full");
+    expect(recentStatusBars[0]).not.toHaveClass("justify-end");
+    expect(sparseBars[0]).toHaveClass("flex-1");
+    expect(sparseBars[0]).not.toHaveClass("w-[6px]");
   });
 });

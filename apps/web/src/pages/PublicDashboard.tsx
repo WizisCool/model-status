@@ -172,13 +172,12 @@ function StatusBars({
   isProbeCycleRunning: boolean;
 }) {
   const { barHeight, gapClass } = getRangeMeta(range);
-  const isSparse = range === "90m" && statuses.length < 30;
   const decoratedStatuses = decorateRecentStatuses(statuses, isProbeCycleRunning);
 
   return (
-    <div className={`flex items-center ${isSparse ? "justify-end gap-[3px]" : gapClass} ${barHeight}`} role="img" aria-label={copy.recentStatus}>
+    <div className={`flex w-full items-center ${gapClass} ${barHeight}`} role="img" aria-label={copy.recentStatus}>
       {decoratedStatuses.map((status) => (
-        <span key={status.id} className={`${isSparse ? "w-[6px]" : "flex-1"} rounded-sm ${barHeight} ${getStatusColor(status.displayLevel)} ${getStatusOpacity(status)}`} title={getStatusTooltip(status, copy, language)} />
+        <span key={status.id} className={`min-w-0 flex-1 rounded-sm ${barHeight} ${getStatusColor(status.displayLevel)} ${getStatusOpacity(status)}`} title={getStatusTooltip(status, copy, language)} />
       ))}
     </div>
   );

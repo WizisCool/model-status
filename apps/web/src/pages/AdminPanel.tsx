@@ -11,10 +11,9 @@ import type {
 } from "@model-status/shared";
 
 import { ModelManagerSection } from "../components/ModelManagerSection";
-import { getAdminCopy } from "../adminCopy";
-import { getAdminSettingGroups, type SettingGroupConfig } from "../adminSettingFields";
+import { getAdminCopy, type SettingGroupConfig } from "../adminCopy";
 import { ToastRegion, type ToastNotice, type ToastTone } from "../components/ToastRegion";
-import { getTranslation, normalizeLanguage, type Language } from "../i18n";
+import { normalizeLanguage, type Language } from "../i18n";
 import { applyTheme, getInitialTheme, type ThemeMode } from "../preferences";
 import { announceDashboardRefresh } from "../services/dashboardEvents";
 
@@ -119,9 +118,9 @@ export function AdminPanel() {
   const toastIdRef = useRef(0);
   const toastTimersRef = useRef(new Map<number, number>());
 
-  const copy = useMemo(() => getTranslation(language), [language]);
-  const adminCopy = useMemo(() => getAdminCopy(language), [language]);
-  const settingGroups = useMemo(() => getAdminSettingGroups(language), [language]);
+  const copy = useMemo(() => getAdminCopy(language), [language]);
+  const adminCopy = copy;
+  const settingGroups = copy.settingGroups;
   const settingFields = useMemo(() => settingGroups.flatMap((group) => group.fields), [settingGroups]);
   const requestFailedCopy = copy.requestFailed;
 
@@ -393,17 +392,7 @@ export function AdminPanel() {
     { id: "upstreams" as const, label: adminCopy.upstreamsNav, description: adminCopy.upstreamsDesc, badge: settings ? String(settings.upstreams.length) : undefined },
     { id: "runtime" as const, label: adminCopy.runtimeNav, description: adminCopy.runtimeDesc },
   ];
-  const durationUnitOptions: Array<{ value: DurationUnit; label: string }> = language === "zh-CN"
-    ? [
-        { value: "seconds", label: "秒" },
-        { value: "minutes", label: "分" },
-        { value: "hours", label: "时" },
-      ]
-    : [
-        { value: "seconds", label: "sec" },
-        { value: "minutes", label: "min" },
-        { value: "hours", label: "hr" },
-      ];
+  const durationUnitOptions = copy.durationUnitOptions;
   const settingFieldByKey = useMemo(
     () => new Map(settingFields.map((field) => [field.key, field])),
     [settingFields],

@@ -1,4 +1,4 @@
-import { Activity, CheckCircle2, Clock, Languages, LayoutGrid, List, Moon, Server, Sun, XCircle } from "lucide-react";
+import { Activity, CheckCircle2, Clock, Languages, LayoutGrid, List, LoaderCircle, Moon, Server, Shield, Sun, XCircle } from "lucide-react";
 import { PROJECT_REPOSITORY_URL } from "@model-status/shared";
 import type { DashboardRange, DashboardResponse, ModelSummary, ProbeStatusSample } from "@model-status/shared";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -148,14 +148,55 @@ function getRangeMeta(range: DashboardRange) {
 }
 
 function Indicator({ tone }: { tone: ProbeStatusSample["level"] }) {
-  const isAnimated = tone === "up" || tone === "degraded";
   const colorClass = getStatusColor(tone);
 
   return (
     <span className="relative flex h-2.5 w-2.5 flex-shrink-0">
-      {isAnimated ? <span className={`absolute inline-flex h-full w-full rounded-full ${colorClass} animate-ping opacity-60`} /> : null}
       <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${colorClass}`} />
     </span>
+  );
+}
+
+function SchedulerStatusPill({
+  nextProbeAt,
+  dashboardTone,
+  copy,
+  successLabel,
+}: {
+  nextProbeAt: string | null;
+  dashboardTone: ProbeStatusSample["level"];
+  copy: Translation;
+  successLabel: string | null;
+}) {
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNowMs(Date.now());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="inline-flex flex-wrap items-center gap-2 rounded-full border border-border bg-background/70 px-3 py-1 text-xs font-mono text-textSecondary shadow-sm">
+      <Indicator tone={dashboardTone} />
+      <span>{formatCountdown(nextProbeAt, nowMs, copy)}</span>
+      {successLabel ? <span className="text-textMuted">|</span> : null}
+      {successLabel ? <span>{successLabel}</span> : null}
+    </div>
+  );
+}
+
+function LoadingScreen({ title, subtitle }: { title: string; subtitle: string }) {
+  return (
+    <div className="glass-panel flex min-h-[60vh] flex-col items-center justify-center rounded-[28px] border px-6 py-20 text-center shadow-lg shadow-black/5">
+      <div className="flex h-16 w-16 items-center justify-center rounded-3xl border border-border bg-background/80 text-accent">
+        <LoaderCircle size={28} className="animate-spin" />
+      </div>
+      <h2 className="mt-6 text-2xl font-mono text-textPrimary">{title}</h2>
+      <p className="mt-2 text-sm font-mono text-textMuted">{subtitle}</p>
+    </div>
   );
 }
 
@@ -218,14 +259,14 @@ function StatCard({
   detail?: string;
 }) {
   return (
-    <div className="rounded-[24px] border border-border bg-background/72 p-4 shadow-sm shadow-black/5 transition-colors">
+    <div className="rounded-[24px] border border-border bg-surface/78 p-4 shadow-sm shadow-black/5 transition-colors">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="text-[11px] font-mono uppercase tracking-[0.22em] text-textMuted">{label}</div>
           <div className={`mt-3 text-3xl font-mono ${valueColor}`}>{value}</div>
           {detail ? <div className="mt-2 text-xs text-textMuted">{detail}</div> : null}
         </div>
-        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border border-border bg-surface/80 text-textSecondary">
+        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border border-border bg-background/80 text-textSecondary">
           {icon}
         </div>
       </div>
@@ -360,11 +401,10 @@ export function PublicDashboard() {
   const [data, setData] = useState<DashboardResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [nowMs, setNowMs] = useState(() => Date.now());
+  const [scheduleExpired, setScheduleExpired] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
   const copy = useMemo(() => getTranslation(language), [language]);
-  const scheduleExpired = data?.nextProbeAt ? Date.parse(data.nextProbeAt) <= nowMs : false;
   const isProbeCycleRunning = Boolean(data?.nextProbeAt) && scheduleExpired;
 
   const fetchData = useCallback(async () => {
@@ -411,12 +451,29 @@ export function PublicDashboard() {
   }), [fetchData]);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setNowMs(Date.now());
-    }, 1000);
+    if (!data?.nextProbeAt) {
+      setScheduleExpired(false);
+      return;
+    }
 
-    return () => clearInterval(interval);
-  }, []);
+    const nextProbeMs = Date.parse(data.nextProbeAt);
+    if (!Number.isFinite(nextProbeMs)) {
+      setScheduleExpired(false);
+      return;
+    }
+
+    if (nextProbeMs <= Date.now()) {
+      setScheduleExpired(true);
+      return;
+    }
+
+    setScheduleExpired(false);
+    const timeout = setTimeout(() => {
+      setScheduleExpired(true);
+    }, nextProbeMs - Date.now());
+
+    return () => clearTimeout(timeout);
+  }, [data?.nextProbeAt]);
 
   useEffect(() => {
     if (!data?.nextProbeAt) {
@@ -501,14 +558,22 @@ export function PublicDashboard() {
     void checkAdmin();
   }, [checkAdmin]);
 
-  const countdownLabel = formatCountdown(data?.nextProbeAt ?? null, nowMs, copy);
   const healthyRate = data && data.summary.totalModels > 0
     ? Number(((data.summary.availableModels / data.summary.totalModels) * 100).toFixed(1))
     : 0;
   const rangeSuccessLabel = data ? `${copy.successRate}: ${data.summary.availabilityPercentage.toFixed(1)}%` : null;
   const dashboardTone = getDashboardTone(data?.summary ?? null);
 
-  const toggleLanguage = () => setLanguage((prev) => (prev === "en" ? "zh-CN" : "en"));
+  const handleRangeChange = (value: DashboardRange) => {
+    setLoading(true);
+    setData(null);
+    setRange(value);
+  };
+  const toggleLanguage = () => {
+    setLoading(true);
+    setData(null);
+    setLanguage((prev) => (prev === "en" ? "zh-CN" : "en"));
+  };
   const toggleTheme = () => setTheme((prev) => (prev === "dark" ? "light" : "dark"));
 
   return (
@@ -522,9 +587,6 @@ export function PublicDashboard() {
 
           <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="space-y-3">
-              <div className="inline-flex items-center rounded-full border border-border bg-background/70 px-3 py-1 text-xs font-mono uppercase tracking-[0.28em] text-textMuted">
-                {copy.publicDashboard}
-              </div>
               <div>
                 <h1 className="text-3xl font-mono font-semibold tracking-tight text-textPrimary md:text-4xl">
                   {data?.siteTitle || copy.title}
@@ -533,12 +595,7 @@ export function PublicDashboard() {
                   {data?.siteSubtitle || copy.subtitle}
                 </p>
               </div>
-              <div className="inline-flex flex-wrap items-center gap-2 rounded-full border border-border bg-background/70 px-3 py-1 text-xs font-mono text-textSecondary shadow-sm">
-                <Indicator tone={dashboardTone} />
-                <span>{countdownLabel}</span>
-                {rangeSuccessLabel ? <span className="text-textMuted">|</span> : null}
-                {rangeSuccessLabel ? <span>{rangeSuccessLabel}</span> : null}
-              </div>
+              <SchedulerStatusPill nextProbeAt={data?.nextProbeAt ?? null} dashboardTone={dashboardTone} copy={copy} successLabel={rangeSuccessLabel} />
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
@@ -547,7 +604,7 @@ export function PublicDashboard() {
                   <button
                     key={value}
                     type="button"
-                    onClick={() => setRange(value)}
+                    onClick={() => handleRangeChange(value)}
                     className={`rounded-xl px-4 py-1.5 text-sm font-mono transition-colors ${range === value ? "bg-accent text-textPrimary shadow-sm" : "text-textSecondary hover:bg-surfaceHover hover:text-textPrimary"}`}
                   >
                     {value}
@@ -574,8 +631,13 @@ export function PublicDashboard() {
 
               <div className="flex items-center gap-2">
                 {isAdmin ? (
-                  <a href="/admin" className="glass-button flex h-10 items-center rounded-xl px-4 text-sm font-mono text-textSecondary hover:text-textPrimary" title={copy.adminDashboard}>
-                    {copy.admin}
+                  <a
+                    href="/admin"
+                    className="glass-button flex h-10 w-10 items-center justify-center rounded-xl text-textSecondary hover:text-textPrimary"
+                    title={copy.adminDashboard}
+                    aria-label={copy.adminDashboard}
+                  >
+                    <Shield size={16} />
                   </a>
                 ) : null}
                 <button type="button" onClick={toggleLanguage} className="glass-button rounded-xl p-2 text-textSecondary hover:text-textPrimary" title={copy.toggleLanguage}>
@@ -596,22 +658,14 @@ export function PublicDashboard() {
             <p className="max-w-md text-textSecondary">{error}</p>
           </div>
         ) : loading && !data ? (
-          <div className="flex flex-col items-center justify-center py-32">
-            <Activity className="animate-pulse text-textMuted" size={32} />
-            <p className="mt-4 text-sm font-mono text-textMuted animate-pulse">{copy.establishingConnection}</p>
-          </div>
+          <LoadingScreen title={copy.title} subtitle={copy.establishingConnection} />
         ) : data ? (
           <div className="space-y-6 animate-in fade-in duration-500">
             {data.showSummaryCards ? (
               <section className="glass-panel rounded-[28px] border border-border p-5 shadow-lg shadow-black/5">
-                <div className="mb-4 flex items-center justify-between gap-4 border-b border-border pb-3">
+                <div className="mb-4 border-b border-border pb-3">
                   <div>
                     <h2 className="text-lg font-mono text-textPrimary">{language === "zh-CN" ? "概览" : "Overview"}</h2>
-                    <p className="mt-1 text-xs font-mono uppercase tracking-[0.18em] text-textMuted">{rangeSuccessLabel}</p>
-                  </div>
-                  <div className="inline-flex items-center gap-2 rounded-full border border-border bg-background/70 px-3 py-1 text-xs font-mono text-textSecondary">
-                    <Indicator tone={dashboardTone} />
-                    <span>{healthyRate.toFixed(1)}%</span>
                   </div>
                 </div>
 

@@ -1,6 +1,5 @@
-import { Clock3, Gauge, RefreshCw, ShieldCheck, SwatchBook } from "lucide-react";
+import { Clock3, Gauge, Languages, LogOut, Monitor, Moon, RefreshCw, ShieldCheck, Sun, SwatchBook } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { PROJECT_REPOSITORY_URL } from "@model-status/shared";
 import type {
   AdminActionResponse,
   AdminSettings,
@@ -447,9 +446,6 @@ export function AdminPanel() {
 
             <div className="relative flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
               <div className="max-w-xl space-y-3">
-                <div className="inline-flex items-center rounded-full border border-border bg-background/70 px-3 py-1 text-xs font-mono uppercase tracking-[0.28em] text-textMuted">
-                  {adminCopy.controlSurface}
-                </div>
                 <div>
                   <h1 className="text-3xl font-mono font-semibold tracking-tight text-textPrimary md:text-4xl">{copy.adminDashboard}</h1>
                   <p className="mt-2 text-sm text-textSecondary">{adminCopy.workspaceIntro}</p>
@@ -458,8 +454,12 @@ export function AdminPanel() {
 
               <div className="glass-panel w-full max-w-md rounded-[28px] border border-border p-6 shadow-lg shadow-black/5">
                 <div className="flex justify-end gap-2">
-                  <button type="button" onClick={() => setLanguage((prev) => (prev === "en" ? "zh-CN" : "en"))} className="glass-button rounded-xl px-4 py-2 text-sm font-mono">{copy.toggleLanguage}</button>
-                  <button type="button" onClick={() => setTheme((prev) => (prev === "dark" ? "light" : "dark"))} className="glass-button rounded-xl px-4 py-2 text-sm font-mono">{copy.toggleTheme}</button>
+                  <button type="button" onClick={() => setLanguage((prev) => (prev === "en" ? "zh-CN" : "en"))} className="glass-button rounded-xl p-2 text-textSecondary hover:text-textPrimary" title={copy.toggleLanguage} aria-label={copy.toggleLanguage}>
+                    <Languages size={16} />
+                  </button>
+                  <button type="button" onClick={() => setTheme((prev) => (prev === "dark" ? "light" : "dark"))} className="glass-button rounded-xl p-2 text-textSecondary hover:text-textPrimary" title={copy.toggleTheme} aria-label={copy.toggleTheme}>
+                    {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+                  </button>
                 </div>
                 <div className="mt-5 space-y-4">
                   <input value={username} onChange={(event) => setUsername(event.target.value)} placeholder={copy.username} className="w-full rounded-xl border border-border bg-background/70 px-3 py-2 text-textPrimary" />
@@ -490,9 +490,6 @@ export function AdminPanel() {
 
           <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="space-y-3">
-              <div className="inline-flex items-center rounded-full border border-border bg-background/70 px-3 py-1 text-xs font-mono uppercase tracking-[0.28em] text-textMuted">
-                {adminCopy.controlSurface}
-              </div>
               <div>
                 <h1 className="text-3xl font-mono font-semibold tracking-tight text-textPrimary md:text-4xl">{copy.adminDashboard}</h1>
                 <p className="mt-2 max-w-2xl text-sm text-textSecondary">
@@ -502,18 +499,18 @@ export function AdminPanel() {
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <div className="rounded-2xl border border-border bg-background/70 px-4 py-3 text-right">
-                <div className="text-[11px] font-mono uppercase tracking-[0.22em] text-textMuted">{adminCopy.operator}</div>
-                <div className="mt-1 text-sm font-mono text-textPrimary">{session.username}</div>
-              </div>
-              <button type="button" onClick={() => setLanguage((prev) => (prev === "en" ? "zh-CN" : "en"))} className="glass-button rounded-xl px-4 py-2 text-sm font-mono">
-                {copy.toggleLanguage}
+              <button type="button" onClick={() => setLanguage((prev) => (prev === "en" ? "zh-CN" : "en"))} className="glass-button rounded-xl p-2 text-textSecondary hover:text-textPrimary" title={copy.toggleLanguage} aria-label={copy.toggleLanguage}>
+                <Languages size={16} />
               </button>
-              <button type="button" onClick={() => setTheme((prev) => (prev === "dark" ? "light" : "dark"))} className="glass-button rounded-xl px-4 py-2 text-sm font-mono">
-                {copy.toggleTheme}
+              <button type="button" onClick={() => setTheme((prev) => (prev === "dark" ? "light" : "dark"))} className="glass-button rounded-xl p-2 text-textSecondary hover:text-textPrimary" title={copy.toggleTheme} aria-label={copy.toggleTheme}>
+                {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
               </button>
-              <a href="/" className="glass-button rounded-xl px-4 py-2 text-sm font-mono text-textSecondary hover:text-textPrimary">{copy.publicDashboard}</a>
-              <button type="button" onClick={logout} className="glass-button rounded-xl px-4 py-2 text-sm font-mono">{copy.logout}</button>
+              <a href="/" className="glass-button flex h-10 w-10 items-center justify-center rounded-xl text-textSecondary hover:text-textPrimary" title={copy.publicDashboard} aria-label={copy.publicDashboard}>
+                <Monitor size={16} />
+              </a>
+              <button type="button" onClick={logout} className="glass-button rounded-xl p-2 text-textSecondary hover:text-textPrimary" title={copy.logout} aria-label={copy.logout}>
+                <LogOut size={16} />
+              </button>
             </div>
           </div>
         </div>
@@ -724,15 +721,6 @@ export function AdminPanel() {
                           <p className="mt-1 text-sm text-textSecondary">{group.description}</p>
                         </div>
                       </div>
-
-                      {group.note ? (
-                        <div className="mt-4 rounded-2xl border border-border bg-background/65 px-4 py-3 text-sm text-textSecondary">
-                          <div>{group.note}</div>
-                          <a href={PROJECT_REPOSITORY_URL} target="_blank" rel="noreferrer" className="mt-2 inline-flex font-mono text-xs text-accent transition-colors hover:text-textPrimary">
-                            {PROJECT_REPOSITORY_URL}
-                          </a>
-                        </div>
-                      ) : null}
 
                       <div className={`mt-4 grid gap-4 ${group.fields.length > 2 ? "md:grid-cols-2" : ""}`}>
                         {group.fields.map((field) => {

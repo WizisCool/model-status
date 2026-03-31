@@ -73,7 +73,7 @@ docker pull ghcr.io/wiziscool/model-status:latest
 docker run --rm -p 3000:3000 \
   -e ADMIN_BOOTSTRAP_PASSWORD=change-me \
   -e SESSION_SECRET=replace-this \
-  -v model-status-data:/app/data \
+  -v ./data:/app/data \
   ghcr.io/wiziscool/model-status:latest
 ```
 
@@ -96,10 +96,7 @@ services:
       ADMIN_BOOTSTRAP_PASSWORD: change-me
       SESSION_SECRET: replace-this-in-production
     volumes:
-      - model-status-data:/app/data
-
-volumes:
-  model-status-data:
+      - ./data:/app/data
 ```
 
 启动：

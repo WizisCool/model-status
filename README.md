@@ -1,76 +1,186 @@
-# Model Status
+<div align="center">
+  <img src="apps/web/public/project-icon.svg" width="88" alt="Model Status icon" />
+  <h1>Model Status</h1>
+  <p><strong>Local-first monitoring for OpenAI-compatible model APIs.</strong></p>
+  <p>
+    A public read-only status dashboard, a private admin workspace, SQLite-backed history,
+    configurable retries, and a single-process production deployment model.
+  </p>
+  <p>
+    <a href="#quick-start">Quick Start</a> ·
+    <a href="#docker">Docker</a> ·
+    <a href="#configuration">Configuration</a> ·
+    <a href="#architecture">Architecture</a>
+  </p>
+  <p>
+    <a href="https://github.com/WizisCool/model-status/actions/workflows/docker-image.yml">
+      <img src="https://github.com/WizisCool/model-status/actions/workflows/docker-image.yml/badge.svg" alt="Docker image workflow" />
+    </a>
+  </p>
+</div>
 
-Model Status 是一个 AI 模型 API 监测站点。它会从 `https://ai.dooo.ng/v1/models` 拉取模型目录，使用 OpenAI 兼容的最小上下文流式对话探测每个模型的连通性，并把连通时延、首个 token 时延与总耗时持久化到本地 SQLite，再通过一个简洁但美观的前端页面展示 `90m / 24h / 7d / 30d` 四个固定时间维度的数据。
+## Overview
 
-## 功能
+Model Status is a local-first monitoring panel for model APIs that expose an OpenAI-compatible interface.
 
-- 拉取 AI 路由站模型列表并本地缓存
-- 使用最小 prompt 对每个模型执行真实流式探测
-- 记录连通时延、首 token 时延、总耗时与失败信息
-- 本地 SQLite 持久化探测历史
-- 仪表盘支持 `90m`、`24h`、`7d`、`30d`
-- 支持卡片 / 列表两种浏览视图
-- `npm run start` 可直接同时提供 API 与构建后的前端
+It continuously:
 
-## 目录
+- syncs model catalogs from configured upstreams
+- runs real probe requests against each visible model
+- records connectivity, first-token, and total latency in SQLite
+- calculates dashboard availability from final visible status outcomes
+- serves both the API and the built frontend from one process in production
 
-- `apps/api`：模型同步、探测、持久化、JSON API、生产静态托管
-- `apps/web`：React + Vite 仪表盘界面
-- `packages/shared`：前后端共用类型与时间范围工具
+The public `/` dashboard is read-only. The private `/admin` workspace manages upstreams, settings, scheduling, visibility, ordering, and on-demand actions.
 
-## 环境准备
+## Highlights
 
-推荐 Node 24+。
+- Local-first by default. No cloud telemetry is required.
+- SQLite is the single source of truth for settings and monitoring history.
+- Public dashboard supports fixed ranges: `90m`, `24h`, `7d`, `30d`.
+- Admin settings control probe interval, timeout, concurrency, retry counts, score thresholds, and branding text.
+- Retry logic is configurable for both degraded results and hard failures.
+- Public availability is based on the final visible status outcome, matching the frontend status indicators.
+- Frontend supports persisted preferences for range, view mode, language, and theme.
+- Production mode can run as a single container that serves both API and frontend assets.
 
-1. 安装依赖
+## Screens and Behavior
+
+- `GET /`
+  Public monitoring dashboard for operators, customers, or teammates.
+- `GET /admin`
+  Authenticated control panel for upstream management and runtime settings.
+- `GET /api/dashboard`
+  Public read-only dashboard data.
+- `GET /api/admin/*`
+  Authenticated administration APIs.
+
+## Tech Stack
+
+- Node.js 24+
+- npm `11.10.1`
+- TypeScript (strict mode)
+- Native Node HTTP server
+- React 19 + Vite
+- Tailwind CSS
+- SQLite
+- Vitest
+- GitHub Actions + GHCR for Docker image publishing
+
+## Quick Start
+
+### 1. Install dependencies
 
 ```bash
 npm install
 ```
 
-2. 复制环境文件
+### 2. Create your local environment file
 
 ```bash
-copy .env.example .env
+cp .env.example .env
 ```
 
-3. 在 `.env` 中填写真实 API Key，例如：
+Windows PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+### 3. Set bootstrap values
+
+These values are bootstrap-only. Runtime settings such as upstreams, intervals, thresholds, and retry counts are managed in the admin UI and stored in SQLite.
 
 ```env
-API_BASE_URL=https://ai.dooo.ng/v1
-MODELS_URL=https://ai.dooo.ng/v1/models
-API_KEY=你的真实 key
-DATABASE_FILE=./data/relay-radar.db
+PORT=3000
+HOST=0.0.0.0
+WEB_ORIGIN=http://localhost:5173
+DATABASE_FILE=./data/model-status.db
+ADMIN_BOOTSTRAP_USERNAME=admin
+ADMIN_BOOTSTRAP_PASSWORD=change-me
+SESSION_SECRET=replace-this-in-production
 ```
 
-## 开发
+### 4. Start in development
 
 ```bash
 npm run dev
 ```
 
-- API 默认在 `http://localhost:3000`
-- Web 默认在 `http://localhost:5173`
-- Vite 会把 `/api/*` 代理到本地 API
+Default local URLs:
 
-## 构建与启动
+- API: `http://localhost:3000`
+- Web: `http://localhost:5173`
+
+### 5. Build for production
 
 ```bash
 npm run build
 npm run start
 ```
 
-`npm run start` 会启动 API 服务，并在检测到 `apps/web/dist` 存在时直接托管前端静态文件，因此生产模式只需要一个进程。
+When `apps/web/dist` exists, the API process serves the frontend directly.
 
-## 主要接口
+## Docker
 
-- `GET /api/health`
-- `GET /api/models`
-- `POST /api/models/sync`
-- `POST /api/probes/run`
-- `GET /api/dashboard?range=90m|24h|7d|30d`
+This repository includes a production Dockerfile and a GitHub Actions workflow that builds and publishes images to GHCR.
 
-## 验证命令
+### Build locally
+
+```bash
+docker build -t model-status:local .
+```
+
+### Run locally
+
+```bash
+docker run --rm -p 3000:3000 \
+  -e ADMIN_BOOTSTRAP_PASSWORD=change-me \
+  -e SESSION_SECRET=replace-this \
+  -v model-status-data:/app/data \
+  model-status:local
+```
+
+### Pull from GHCR
+
+```bash
+docker pull ghcr.io/wiziscool/model-status:latest
+```
+
+## Configuration
+
+### Bootstrap-only environment variables
+
+These are read from `.env` / `.env.local` on startup:
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `HOST` | Server bind host | `0.0.0.0` |
+| `PORT` | Server port | `3000` |
+| `WEB_ORIGIN` | Allowed admin origin | `http://localhost:5173` |
+| `DATABASE_FILE` | SQLite database path | `./data/model-status.db` |
+| `ADMIN_BOOTSTRAP_USERNAME` | Initial admin username | `admin` |
+| `ADMIN_BOOTSTRAP_PASSWORD` | Initial admin password | empty |
+| `SESSION_SECRET` | Session signing secret | empty |
+
+### Runtime-managed settings
+
+These are stored in SQLite and edited from `/admin`:
+
+- site title and subtitle
+- summary card visibility
+- probe interval
+- catalog sync interval
+- probe timeout
+- probe concurrency
+- max tokens
+- temperature
+- degraded retry attempts
+- failed retry attempts
+- score thresholds
+- upstream definitions and API keys
+
+## Verification
 
 ```bash
 npm run test
@@ -78,14 +188,56 @@ npm run typecheck
 npm run build
 ```
 
-## 指标定义
+## Architecture
 
-- **连通时延**：请求发出到上游响应建立成功
-- **首 token 时延**：请求发出到收到第一个有效流式内容片段
-- **总耗时**：请求发出到探测完成
+```text
+apps/api      HTTP server, auth, scheduler, probes, persistence, frontend hosting
+apps/web      Public dashboard + admin workspace
+packages/shared  Shared DTOs, ranges, repository constants
+data/         Local SQLite database files
+```
 
-## 说明
+Production flow:
 
-- 项目不会写入任何云端监控平台
-- 所有历史数据都保存在本地数据库文件
-- 探测失败不会被忽略，而是作为一等数据保留在历史中
+1. The API boots with bootstrap env values.
+2. SQLite runtime settings are loaded or initialized.
+3. The scheduler runs model sync and probe cycles in-process.
+4. Probe results are persisted.
+5. The public and admin dashboards read aggregated data from SQLite.
+6. In production, the API serves the built frontend from `apps/web/dist`.
+
+## Repository Policy
+
+This repository intentionally does not include local operator files or assistant-specific workspace data.
+
+Ignored / excluded from public version control:
+
+- `.codex/`
+- all `AGENTS.md`
+- local `.env*`
+- SQLite database files under `data/`
+- local helper script `check-db-status.ts`
+- cookies, temp files, and local build artifacts
+
+## API Surface
+
+### Public
+
+- `GET /api/health`
+- `GET /api/dashboard?range=90m|24h|7d|30d`
+
+### Admin
+
+- `GET /api/admin/session`
+- `POST /api/admin/login`
+- `POST /api/admin/logout`
+- `GET /api/admin/settings`
+- `PUT /api/admin/settings`
+- `GET /api/admin/dashboard`
+- `PUT /api/admin/models`
+- `POST /api/admin/actions/sync-models`
+- `POST /api/admin/actions/run-probes`
+
+## License
+
+Add your preferred license before making the repository broadly public.

@@ -29,22 +29,37 @@ function parseEnvFile(contents: string): Record<string, string> {
   return values;
 }
 
+function isWorkspaceRoot(directory: string): boolean {
+  const packageJsonPath = resolve(directory, "package.json");
+  if (!existsSync(packageJsonPath)) {
+    return false;
+  }
+
+  try {
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8")) as { workspaces?: unknown };
+    return Array.isArray(packageJson.workspaces);
+  } catch {
+    return false;
+  }
+}
+
 function findWorkspaceRoot(startDirectory: string): string {
   let currentDirectory = resolve(startDirectory);
-  let lastValidRoot = resolve(startDirectory);
+  let lastPackageDirectory = resolve(startDirectory);
 
   while (true) {
     const packageJsonPath = resolve(currentDirectory, "package.json");
-    const agentsPath = resolve(currentDirectory, "AGENTS.md");
-    // Track the deepest directory that has both markers (keep going up to find root)
-    if (existsSync(packageJsonPath) && existsSync(agentsPath)) {
-      lastValidRoot = currentDirectory;
+    if (existsSync(packageJsonPath)) {
+      lastPackageDirectory = currentDirectory;
+    }
+
+    if (isWorkspaceRoot(currentDirectory)) {
+      return currentDirectory;
     }
 
     const parentDirectory = dirname(currentDirectory);
     if (parentDirectory === currentDirectory) {
-      // Reached filesystem root, return the last valid root found
-      return lastValidRoot;
+      return lastPackageDirectory;
     }
 
     currentDirectory = parentDirectory;

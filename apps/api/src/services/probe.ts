@@ -30,6 +30,16 @@ function parseSsePayloads(buffer: string): { payloads: string[]; remainder: stri
   return { payloads, remainder };
 }
 
+function readFirstNonEmptyString(values: unknown[]): string | null {
+  for (const value of values) {
+    if (typeof value === "string" && value.length > 0) {
+      return value;
+    }
+  }
+
+  return null;
+}
+
 function extractContent(payload: unknown): string | null {
   if (!payload || typeof payload !== "object") {
     return null;
@@ -44,20 +54,33 @@ function extractContent(payload: unknown): string | null {
     const delta = choice.delta;
 
     if (delta && typeof delta === "object") {
-      const content = (delta as Record<string, unknown>).content;
-      if (typeof content === "string" && content.length > 0) {
+      const deltaRecord = delta as Record<string, unknown>;
+      const content = readFirstNonEmptyString([
+        deltaRecord.content,
+        deltaRecord.reasoning,
+        deltaRecord.reasoning_content,
+      ]);
+      if (content) {
         return content;
       }
     }
 
-    const text = choice.text;
-    if (typeof text === "string" && text.length > 0) {
+    const text = readFirstNonEmptyString([
+      choice.text,
+      choice.content,
+      choice.reasoning,
+      choice.reasoning_content,
+    ]);
+    if (text) {
       return text;
     }
   }
 
-  const content = record.content;
-  return typeof content === "string" && content.length > 0 ? content : null;
+  return readFirstNonEmptyString([
+    record.content,
+    record.reasoning,
+    record.reasoning_content,
+  ]);
 }
 
 function isParseableCompletionPayload(payload: unknown): boolean {

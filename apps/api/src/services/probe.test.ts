@@ -48,6 +48,14 @@ describe("probe helpers", () => {
     ).toBe("ok");
   });
 
+  it("extracts content from reasoning-first delta payloads", () => {
+    expect(
+      __probeTestUtils.extractContent({
+        choices: [{ delta: { reasoning: "thinking" } }],
+      }),
+    ).toBe("thinking");
+  });
+
   it("keeps incomplete SSE fragments in the remainder buffer", () => {
     const result = __probeTestUtils.parseSsePayloads(
       'data: {"choices":[{"delta":{"content":"ok"}}]}\n\n' +
@@ -158,6 +166,65 @@ describe("probe helpers", () => {
     expect(result).toBeDefined();
     if (!result) {
       throw new Error("Expected a probe result for the valid-stream test");
+    }
+
+    expect(result.success).toBe(true);
+    expect(result.firstTokenLatencyMs).toBeTypeOf("number");
+  });
+
+  it("keeps a reasoning-only stream as a successful probe", async () => {
+    const db: DbClient = {
+      upsertModel: vi.fn(),
+      upsertUpstream: vi.fn(),
+      listUpstreams: vi.fn(() => []),
+      deactivateMissingUpstreams: vi.fn(),
+      listModels: vi.fn(() => [
+        { upstreamId: "main", id: "gpt-reasoning", created: null, ownedBy: null, displayName: null, icon: null, isVisible: true, sortOrder: 0, syncedAt: new Date().toISOString(), isActive: true },
+      ]),
+      updateModelMetadata: vi.fn(),
+      deactivateMissingModels: vi.fn(),
+      getSetting: vi.fn(() => null),
+      setSetting: vi.fn(),
+      listSettings: vi.fn(() => ({})),
+      getAdminUserByUsername: vi.fn(() => null),
+      getAdminUserById: vi.fn(() => null),
+      createAdminUser: vi.fn(),
+      updateAdminLogin: vi.fn(),
+      createAdminSession: vi.fn(),
+      getAdminSessionByTokenHash: vi.fn(() => null),
+      touchAdminSession: vi.fn(),
+      deleteAdminSession: vi.fn(),
+      deleteExpiredAdminSessions: vi.fn(),
+      insertProbe: vi.fn(() => 1),
+      listProbesSince: vi.fn(() => []),
+      listRecentProbes: vi.fn(() => []),
+      close: vi.fn(),
+    };
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(
+          new ReadableStream({
+            start(controller) {
+              controller.enqueue(
+                new TextEncoder().encode(
+                  'data: {"choices":[{"delta":{"reasoning":"thinking"}}]}\n\n' + 'data: [DONE]\n\n',
+                ),
+              );
+              controller.close();
+            },
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
+
+    const [result] = await probeAllModels(baseConfig, db);
+
+    expect(result).toBeDefined();
+    if (!result) {
+      throw new Error("Expected a probe result for the reasoning-only stream test");
     }
 
     expect(result.success).toBe(true);

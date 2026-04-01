@@ -16,7 +16,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Eye, EyeOff, GripVertical, Save, X } from "lucide-react";
+import { Eye, EyeOff, GripVertical, Save, Trash2, X } from "lucide-react";
 import { createPortal } from "react-dom";
 import { useMemo, useState } from "react";
 
@@ -139,15 +139,19 @@ function ModelIconModal({
 function SortableModelRow({
   model,
   language,
+  isClearingHistory,
   onDisplayNameChange,
   onOpenIconPicker,
   onToggleVisibility,
+  onClearHistory,
 }: {
   model: EditableModel;
   language: "en" | "zh-CN";
+  isClearingHistory: boolean;
   onDisplayNameChange: (value: string) => void;
   onOpenIconPicker: () => void;
   onToggleVisibility: () => void;
+  onClearHistory: () => void;
 }) {
   const copy = getAdminCopy(language);
   const displayLabel = getModelLabel(model, copy);
@@ -166,6 +170,7 @@ function SortableModelRow({
     transform: CSS.Transform.toString(transform),
     transition,
   };
+  const canClearHistory = model.probes > 0 && !isClearingHistory;
 
   return (
     <article
@@ -234,6 +239,21 @@ function SortableModelRow({
           </div>
         </div>
       </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/70 pt-3 text-[11px] font-mono">
+        <div className="rounded-full border border-border px-2.5 py-1 text-textMuted">
+          {model.probes} {copy.probeHistoryRecords}
+        </div>
+        <button
+          type="button"
+          onClick={onClearHistory}
+          disabled={!canClearHistory}
+          className="glass-button inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-error disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Trash2 size={13} />
+          <span>{isClearingHistory ? copy.clearingModelHistory : copy.clearModelHistory}</span>
+        </button>
+      </div>
     </article>
   );
 }
@@ -241,16 +261,20 @@ function SortableModelRow({
 export function ModelManagerSection({
   models,
   isSaving,
+  clearingModelKey,
   onChange,
   onReorder,
   onSave,
+  onClearHistory,
   language,
 }: {
   models: EditableModel[];
   isSaving: boolean;
+  clearingModelKey: string | null;
   onChange: (upstreamId: string, modelId: string, field: "displayName" | "icon" | "sortOrder" | "isVisible", value: string | number | boolean | null) => void;
   onReorder: (upstreamId: string, orderedModelIds: string[]) => void;
   onSave: () => void;
+  onClearHistory: (upstreamId: string, modelId: string) => void;
   language: "en" | "zh-CN";
 }) {
   const copy = getAdminCopy(language);
@@ -365,9 +389,11 @@ export function ModelManagerSection({
                               key={`${model.upstreamId}:${model.model}`}
                               model={model}
                               language={language}
+                              isClearingHistory={clearingModelKey === getSortableModelId(model)}
                               onDisplayNameChange={(value) => onChange(model.upstreamId, model.model, "displayName", value)}
                               onOpenIconPicker={() => setIconTarget(model)}
                               onToggleVisibility={() => onChange(model.upstreamId, model.model, "isVisible", !model.isVisible)}
+                              onClearHistory={() => onClearHistory(model.upstreamId, model.model)}
                             />
                           ))}
                         </div>

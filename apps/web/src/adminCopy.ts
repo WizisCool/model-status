@@ -84,6 +84,10 @@ export type AdminCopy = {
   modelsSectionTitle: string;
   modelsSectionSubtitle: string;
   saveModelSettings: string;
+  clearModelHistory: string;
+  clearingModelHistory: string;
+  clearModelHistoryConfirm: string;
+  probeHistoryRecords: string;
   noManageableModels: string;
   order: string;
   displayName: string;
@@ -190,6 +194,10 @@ const adminCopyByLanguage: Record<Language, AdminCopy> = {
     modelsSectionTitle: "Model Library",
     modelsSectionSubtitle: "Manage model names, icons, and ordering.",
     saveModelSettings: "Save Model Settings",
+    clearModelHistory: "Clear History",
+    clearingModelHistory: "Clearing...",
+    clearModelHistoryConfirm: "Clear all stored probe history for this model? This cannot be undone.",
+    probeHistoryRecords: "probe records",
     noManageableModels: "No models are available to manage yet.",
     order: "Order",
     displayName: "Display Name",
@@ -347,6 +355,10 @@ const adminCopyByLanguage: Record<Language, AdminCopy> = {
     modelsSectionTitle: "模型库",
     modelsSectionSubtitle: "管理模型名称、图标和排序。",
     saveModelSettings: "保存模型设置",
+    clearModelHistory: "清除历史",
+    clearingModelHistory: "清除中...",
+    clearModelHistoryConfirm: "要清除这个模型的全部探测历史吗？此操作不可撤销。",
+    probeHistoryRecords: "条探测记录",
     noManageableModels: "当前还没有可管理的模型。",
     order: "顺序",
     displayName: "显示名称",

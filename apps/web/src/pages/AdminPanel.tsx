@@ -5,6 +5,7 @@ import type {
   AdminSettings,
   AdminDashboardResponse,
   AdminSessionResponse,
+  ClearModelHistoryRequest,
   AdminSettingsResponse,
   UpdateAdminAccountRequest,
   UpdateAdminModelsRequest,
@@ -102,6 +103,29 @@ function getToastTitle(language: Language, tone: ToastTone): string {
   return "Notice";
 }
 
+function getEditableModelKey(model: Pick<EditableModel, "upstreamId" | "model">): string {
+  return `${model.upstreamId}::${model.model}`;
+}
+
+function mergeModelDrafts(nextModels: EditableModel[], currentDrafts: EditableModel[]): EditableModel[] {
+  const draftByKey = new Map(currentDrafts.map((model) => [getEditableModelKey(model), model]));
+
+  return nextModels.map((model) => {
+    const draft = draftByKey.get(getEditableModelKey(model));
+    if (!draft) {
+      return { ...model };
+    }
+
+    return {
+      ...model,
+      displayName: draft.displayName,
+      icon: draft.icon,
+      isVisible: draft.isVisible,
+      sortOrder: draft.sortOrder,
+    };
+  });
+}
+
 export function AdminPanel() {
   const [theme, setTheme] = useState<ThemeMode>(getInitialTheme);
   const [language, setLanguage] = useState<Language>(() => normalizeLanguage(localStorage.getItem("lang")));
@@ -116,6 +140,7 @@ export function AdminPanel() {
   const [dashboard, setDashboard] = useState<AdminDashboardResponse | null>(null);
   const [editableModels, setEditableModels] = useState<EditableModel[]>([]);
   const [isSavingModels, setIsSavingModels] = useState(false);
+  const [clearingModelKey, setClearingModelKey] = useState<string | null>(null);
   const [durationUnits, setDurationUnits] = useState<Partial<Record<keyof AdminSettings, DurationUnit>>>({});
   const [activeSection, setActiveSection] = useState<AdminSection>(() => {
     const stored = localStorage.getItem("admin-section");
@@ -204,7 +229,7 @@ export function AdminPanel() {
   }, [refreshDashboard, refreshSettings, session.authenticated]);
 
   useEffect(() => {
-    setEditableModels(dashboard?.models.map((model) => ({ ...model })) ?? []);
+    setEditableModels((current) => mergeModelDrafts(dashboard?.models ?? [], current));
   }, [dashboard]);
 
   useEffect(() => {
@@ -376,6 +401,45 @@ export function AdminPanel() {
       await refreshDashboard();
     } finally {
       setIsSavingModels(false);
+    }
+  }
+
+  async function clearModelHistory(upstreamId: string, modelId: string) {
+    const target = editableModels.find((model) => model.upstreamId === upstreamId && model.model === modelId);
+    if (!target || target.probes === 0) {
+      return;
+    }
+
+    if (!window.confirm(copy.clearModelHistoryConfirm)) {
+      return;
+    }
+
+    const modelKey = getEditableModelKey(target);
+    setClearingModelKey(modelKey);
+
+    try {
+      const payload: ClearModelHistoryRequest = {
+        upstreamId,
+        model: modelId,
+      };
+      const response = await fetch(buildApiPath("/api/admin/models/clear-history"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        await notifyErrorResponse(response);
+        return;
+      }
+
+      const json = (await response.json()) as AdminActionResponse;
+      pushNotification("success", json.message);
+      await refreshDashboard();
+      announceDashboardRefresh("model-history-cleared");
+    } finally {
+      setClearingModelKey(null);
     }
   }
 
@@ -689,9 +753,11 @@ export function AdminPanel() {
               <ModelManagerSection
                 models={editableModels}
                 isSaving={isSavingModels}
+                clearingModelKey={clearingModelKey}
                 onChange={handleModelChange}
                 onReorder={reorderModels}
                 onSave={() => void saveModelSettings()}
+                onClearHistory={(upstreamId, modelId) => void clearModelHistory(upstreamId, modelId)}
                 language={language}
               />
             ) : null}

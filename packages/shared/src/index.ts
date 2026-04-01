@@ -193,6 +193,11 @@ export type UpdateAdminModelsRequest = {
   }>;
 };
 
+export type ClearModelHistoryRequest = {
+  upstreamId: string;
+  model: string;
+};
+
 export type AdminActionResponse = {
   ok: boolean;
   message: string;

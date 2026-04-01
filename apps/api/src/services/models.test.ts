@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { DbClient } from "../db";
-import { updateAdminModels } from "./models";
+import { clearAdminModelHistory, updateAdminModels } from "./models";
 
 function createDbStub(): DbClient {
   return {
@@ -38,6 +38,7 @@ function createDbStub(): DbClient {
     deleteAdminSession: vi.fn(),
     deleteExpiredAdminSessions: vi.fn(),
     insertProbe: vi.fn(() => 1),
+    deleteProbesForModel: vi.fn(() => 3),
     listProbesSince: vi.fn(() => []),
     listRecentProbes: vi.fn(() => []),
     close: vi.fn(),
@@ -86,5 +87,21 @@ describe("model service", () => {
         ],
       }),
     ).toThrow("not found");
+  });
+
+  it("clears stored probe history for an existing model", () => {
+    const db = createDbStub();
+
+    const result = clearAdminModelHistory(db, {
+      upstreamId: "main",
+      model: "gpt-5",
+    });
+
+    expect(db.deleteProbesForModel).toHaveBeenCalledWith("main", "gpt-5");
+    expect(result).toEqual({
+      upstreamId: "main",
+      model: "gpt-5",
+      deletedProbeCount: 3,
+    });
   });
 });

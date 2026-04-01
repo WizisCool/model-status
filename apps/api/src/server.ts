@@ -2,7 +2,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { createServer } from "node:http";
 import { extname, join, normalize, resolve } from "node:path";
 
-import type { AdminActionResponse, AdminDashboardResponse, AdminSessionResponse, UpdateAdminAccountRequest, UpdateAdminModelsRequest, UpdateAdminSettingsRequest } from "@model-status/shared";
+import type { AdminActionResponse, AdminDashboardResponse, AdminSessionResponse, ClearModelHistoryRequest, UpdateAdminAccountRequest, UpdateAdminModelsRequest, UpdateAdminSettingsRequest } from "@model-status/shared";
 import { isDashboardRange } from "@model-status/shared";
 
 import { loadConfig } from "./config";
@@ -13,7 +13,7 @@ import { clearSessionCookie, createSessionCookie, ensureAdminUser, getAdminSessi
 import { getRuntimeSettings, getAdminSettingsResponse, updateAdminSettings, ensureRuntimeSettings } from "./services/settings";
 import { syncModelCatalog } from "./services/catalog";
 import { getDashboardData, toPublicDashboardResponse } from "./services/dashboard";
-import { updateAdminModels } from "./services/models";
+import { clearAdminModelHistory, updateAdminModels } from "./services/models";
 import { probeAllModels } from "./services/probe";
 import { createScheduler } from "./services/scheduler";
 
@@ -295,6 +295,20 @@ const server = createServer(async (request, response) => {
       const body = await parseJsonBody<UpdateAdminModelsRequest>(request);
       updateAdminModels(db, body);
       sendJson(response, 200, { ok: true, message: "Model settings saved" } satisfies AdminActionResponse);
+      return;
+    }
+
+    if (request.method === "POST" && pathname === "/api/admin/models/clear-history") {
+      if (!requireAdmin(request, response)) {
+        return;
+      }
+
+      const body = await parseJsonBody<ClearModelHistoryRequest>(request);
+      const cleared = clearAdminModelHistory(db, body);
+      const message = cleared.deletedProbeCount > 0
+        ? `Cleared ${cleared.deletedProbeCount} probe records for ${cleared.upstreamId}/${cleared.model}`
+        : `No probe history found for ${cleared.upstreamId}/${cleared.model}`;
+      sendJson(response, 200, { ok: true, message } satisfies AdminActionResponse);
       return;
     }
 

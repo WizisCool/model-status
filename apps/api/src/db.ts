@@ -71,6 +71,7 @@ export type DbClient = {
   deleteAdminSession(sessionId: string): void;
   deleteExpiredAdminSessions(nowIso: string): void;
   insertProbe(probe: Omit<ProbeRecord, "id">): number;
+  deleteProbesForModel?(upstreamId: string, modelId: string): number;
   listProbesSince(sinceIso: string): ProbeRecord[];
   listRecentProbes(limit: number): ProbeRecord[];
   close(): void;
@@ -441,6 +442,11 @@ export function createDb(databaseFile: string): DbClient {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
+  const deleteProbesForModelStmt = db.prepare(`
+    DELETE FROM probes
+    WHERE upstream_id = ? AND model = ?
+  `);
+
   const deleteStaleModelsForInactiveUpstreamsStmt = db.prepare(`
     UPDATE models
     SET is_active = 0
@@ -660,6 +666,10 @@ export function createDb(databaseFile: string): DbClient {
         probe.rawResponseText,
       );
       return Number(info.lastInsertRowid);
+    },
+    deleteProbesForModel(upstreamId, modelId) {
+      const info = deleteProbesForModelStmt.run(upstreamId, modelId);
+      return Number(info.changes ?? 0);
     },
     listProbesSince(sinceIso) {
       const rows = listProbesSinceStmt.all(sinceIso) as Array<Record<string, unknown>>;

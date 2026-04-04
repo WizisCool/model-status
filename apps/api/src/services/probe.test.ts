@@ -231,6 +231,55 @@ describe("probe helpers", () => {
     expect(result.firstTokenLatencyMs).toBeTypeOf("number");
   });
 
+  it("accepts a non-SSE json completion payload from upstream", async () => {
+    const db: DbClient = {
+      upsertModel: vi.fn(),
+      upsertUpstream: vi.fn(),
+      listUpstreams: vi.fn(() => []),
+      deactivateMissingUpstreams: vi.fn(),
+      listModels: vi.fn(() => [
+        { upstreamId: "main", id: "gpt-json", created: null, ownedBy: null, displayName: null, icon: null, isVisible: true, sortOrder: 0, syncedAt: new Date().toISOString(), isActive: true },
+      ]),
+      updateModelMetadata: vi.fn(),
+      deactivateMissingModels: vi.fn(),
+      getSetting: vi.fn(() => null),
+      setSetting: vi.fn(),
+      listSettings: vi.fn(() => ({})),
+      getAdminUserByUsername: vi.fn(() => null),
+      getAdminUserById: vi.fn(() => null),
+      createAdminUser: vi.fn(),
+      updateAdminLogin: vi.fn(),
+      createAdminSession: vi.fn(),
+      getAdminSessionByTokenHash: vi.fn(() => null),
+      touchAdminSession: vi.fn(),
+      deleteAdminSession: vi.fn(),
+      deleteExpiredAdminSessions: vi.fn(),
+      insertProbe: vi.fn(() => 1),
+      listProbesSince: vi.fn(() => []),
+      listRecentProbes: vi.fn(() => []),
+      close: vi.fn(),
+    };
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(
+          '{"choices":[{"message":{"role":"assistant","content":"ok"},"finish_reason":"stop"}]}',
+          { status: 200, headers: { "content-type": "text/event-stream" } },
+        ),
+      ),
+    );
+
+    const [result] = await probeAllModels(baseConfig, db);
+
+    expect(result).toBeDefined();
+    if (!result) {
+      throw new Error("Expected a probe result for the non-SSE json test");
+    }
+
+    expect(result.success).toBe(true);
+  });
+
   it("turns stream read errors into failed probe results instead of throwing", async () => {
     const db: DbClient = {
       upsertModel: vi.fn(),

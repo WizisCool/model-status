@@ -74,6 +74,16 @@ function extractContent(payload: unknown): string | null {
     if (text) {
       return text;
     }
+
+    const message = choice.message;
+    if (message && typeof message === "object") {
+      const messageContent = readFirstNonEmptyString([
+        (message as Record<string, unknown>).content,
+      ]);
+      if (messageContent) {
+        return messageContent;
+      }
+    }
   }
 
   return readFirstNonEmptyString([
@@ -81,6 +91,23 @@ function extractContent(payload: unknown): string | null {
     record.reasoning,
     record.reasoning_content,
   ]);
+}
+
+function parseCompletionPayload(rawPayload: string): unknown | null {
+  const trimmed = rawPayload.trim();
+  if (!trimmed || trimmed === "[DONE]") {
+    return null;
+  }
+
+  if (trimmed.startsWith("data:")) {
+    return parseCompletionPayload(trimmed.slice(5));
+  }
+
+  try {
+    return JSON.parse(trimmed) as unknown;
+  } catch {
+    return null;
+  }
 }
 
 function isParseableCompletionPayload(payload: unknown): boolean {
@@ -150,6 +177,21 @@ async function runSingleProbe(model: string, config: ProbeTargetConfig): Promise
   let sseBuffer = "";
   let parsedPayloadSeen = false;
   let contentSeen = false;
+  const observePayload = (payloadText: string): void => {
+    const parsed = parseCompletionPayload(payloadText);
+    if (!parsed) {
+      return;
+    }
+
+    parsedPayloadSeen = parsedPayloadSeen || isParseableCompletionPayload(parsed);
+    const content = extractContent(parsed);
+    if (content) {
+      contentSeen = true;
+    }
+    if (firstTokenLatencyMs === undefined && content) {
+      firstTokenLatencyMs = Math.round(performance.now() - startedAtPerf);
+    }
+  };
 
   try {
     if (response.body) {
@@ -171,23 +213,7 @@ async function runSingleProbe(model: string, config: ProbeTargetConfig): Promise
         sseBuffer = remainder;
 
         for (const payload of payloads) {
-          if (payload === "[DONE]") {
-            continue;
-          }
-
-          try {
-            const parsed = JSON.parse(payload) as unknown;
-            parsedPayloadSeen = parsedPayloadSeen || isParseableCompletionPayload(parsed);
-            const content = extractContent(parsed);
-            if (content) {
-              contentSeen = true;
-            }
-            if (firstTokenLatencyMs === undefined && content) {
-              firstTokenLatencyMs = Math.round(performance.now() - startedAtPerf);
-            }
-          } catch {
-            // Ignore fragmented or provider-specific payloads that are not valid JSON events.
-          }
+          observePayload(payload);
         }
       }
     }
@@ -206,6 +232,21 @@ async function runSingleProbe(model: string, config: ProbeTargetConfig): Promise
   }
 
   const completedAt = new Date();
+
+  if (sseBuffer.trim().length > 0) {
+    const { payloads } = parseSsePayloads(`${sseBuffer}\n\n`);
+    if (payloads.length > 0) {
+      for (const payload of payloads) {
+        observePayload(payload);
+      }
+    } else {
+      observePayload(sseBuffer);
+    }
+  }
+
+  if (!parsedPayloadSeen || !contentSeen) {
+    observePayload(rawResponseText);
+  }
 
   if (!parsedPayloadSeen || !contentSeen) {
     return {

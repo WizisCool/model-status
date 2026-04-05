@@ -138,4 +138,3 @@ docker compose up -d
 ## 许可证
 
 本项目采用 [MIT License](LICENSE)。
-Thanks [Linux.do](https://linux.do)
